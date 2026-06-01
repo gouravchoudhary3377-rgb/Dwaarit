@@ -1,0 +1,73 @@
+{
+  "summary": "Backend: 31/31 pytest passing (5 new + 26 regression). All Phase 1 admin endpoints — /api/categories (>=9 defaults seeded), POST/DELETE /api/admin/categories with admin-only enforcement and auto slug, full create/list/update/delete /api/admin/products lifecycle, and negative auth/role checks — work correctly. Frontend: login → admin/orders default lands fine; Products tab loads; ₹ INR formatting verified in list and Price label. Tap 'New' navigates to /admin/add-product. Image bottom sheet correctly exposes all 4 modes (Curated Gallery, Paste URL, Camera, Library); URL mode accepts https://picsum.photos/300 and updates preview. Inline 'Add new' category chip submits to /api/admin/categories and selects the new chip. CRITICAL bug found: add-product.tsx is NOT declared in admin/_layout.tsx <Tabs>, so Expo Router auto-exposes it as a 4th bottom tab (visible 'add-product' label) AND, because the tab keeps its instance/state, route params persist — tapping 'New' after a previous edit re-opens the form in EDIT mode with the stale ?id=... query string. Edit/Delete/post-save navigation were partially blocked by this bug during retest.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "admin tab bar",
+        "issue": "A 4th tab labeled 'add-product' appears in the bottom navigator because app/admin/add-product.tsx is auto-registered by Expo Router but never declared with Tabs.Screen + href:null in admin/_layout.tsx.",
+        "testID": "none",
+        "priority": "HIGH"
+      },
+      {
+        "component": "AddProductScreen (route params)",
+        "issue": "Because add-product is a tab, expo-router preserves its route params across navigations. After an Edit session, tapping 'New' on /admin/products opens /admin/add-product?id=<previous_id> and the form loads in EDIT mode for the wrong/previous product (verified during test run).",
+        "testID": "none",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "AdminProducts list & AddProductScreen",
+        "issue": "No testID attributes on any interactive elements (New, Edit, Delete, image picker, category chip, sheet items, Save). Forced reliance on text-based selectors for automation.",
+        "testID": "missing",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Edit / Save / Delete on /admin/products",
+        "issue": "Could not reliably exercise Edit→Save→Delete on the newly-created product because tapping 'New' lands in stale EDIT mode (see CRITICAL bug). However backend confirms PATCH /api/admin/products/{id} and DELETE work via pytest.",
+        "affected_testIDs": []
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "admin tab bar",
+        "issues": [
+          "Spurious 'add-product' label/icon clutters the tab bar (kebab-case label, no proper icon, breaks symmetry of Orders/Products/Account)."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_admin_categories_products.py",
+    "/app/backend/tests/test_dwaarit_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix CRITICAL: Take add-product out of the admin tab group. Either (a) move app/admin/add-product.tsx into a non-tabs folder (e.g. app/admin/(modals)/add-product.tsx with a parent Stack), or (b) inside admin/_layout.tsx declare <Tabs.Screen name=\"add-product\" options={{ href: null }} /> AND clear params when entering create mode — e.g. router.push({ pathname: '/admin/add-product', params: { id: '' } }) AND in add-product.tsx reset form when editId becomes empty (the current useEffect only runs once because loadProduct's deps don't react to a cleared id within the same mounted tab).",
+    "Add testID to: New button, Edit/Delete buttons on each card, image picker, sheet items (curated/url/camera/library), Use image, Add new chip, Add (inline cat) button, Save Product / Save changes, category chips.",
+    "Verify post-save UX: after successful POST, do router.replace('/admin/products') (not router.back()) so user always lands on the products list regardless of how they arrived (deep link, tab switch, etc.).",
+    "Consider rendering Camera mode item as disabled with a hint on web (Expo web cannot launchCameraAsync) — currently it falls into a permission prompt path that does nothing on web."
+  ],
+  "critical_code_review_comments": [
+    "admin/_layout.tsx: incomplete Tabs.Screen registration — every file in the folder becomes a tab unless excluded with href:null.",
+    "add-product.tsx loadProduct() only runs on mount; if the tab instance is reused with new id param, the form won't refetch. Move to useEffect on params.id with a reset path when id is falsy.",
+    "client.ts: not viewed in detail, but ensure DELETE handles 200 {ok:true} (server returns 200 not 204 — spec mentioned 204/200 either acceptable, current is 200)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_admin_categories_products.py (new — 5 tests for Phase 1 categories + admin product full flow)"
+  ],
+  "success_rate": {
+    "backend": "100% (31/31)",
+    "frontend": "70% — Add-Product navigation, bottom sheet (4 modes), URL paste, inline category add, ₹ formatting all verified working. Edit/Delete/post-save UX blocked by the add-product-as-tab bug."
+  },
+  "seed_data_creation": "Tests create + clean up 'TEST_' / 'TEST UI ...' categories and products through the API; one test category may remain (test does not delete created categories — backend has DELETE /admin/categories but flow doesn't exercise it). No production data altered.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Re-test after the add-product-tab fix lands: (1) tap Products tab → tap New → URL must be exactly /admin/add-product with no ?id= and form must be empty; (2) Edit a product, save, then go back to products and tap New again — must NOT pre-load the previously edited product; (3) verify the 4th 'add-product' label is gone from the bottom tab bar. Backend pytest suite at /app/backend/tests/ is a stable regression — run with `pytest backend/tests/ -v`.",
+  "rca_of_issue": "Expo Router file-based routing auto-registers every .tsx file under app/admin/ as a route. When the parent layout is <Tabs>, every such route becomes a tab unless explicitly hidden via Tabs.Screen with options={{ href: null }}. admin/_layout.tsx only declares orders/products/account but the new add-product.tsx is silently picked up as a fourth tab. Because tab screens are kept mounted (or at least keep their route state), the `id` search param set during a prior Edit session is retained when /admin/add-product is re-pushed. useLocalSearchParams therefore returns the stale id, isEdit becomes true, and the form initializes in edit mode. Reproduction: login as admin → Products → Edit any product → back → Products → New → form opens pre-populated for the just-edited product with URL /admin/add-product?id=<that_id>. Mitigation options listed in action_items above."
+}
