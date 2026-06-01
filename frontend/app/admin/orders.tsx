@@ -336,16 +336,12 @@ export default function AdminOrders() {
       </View>
 
       {/* KPI strip */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.kpiRow}
-      >
+      <View style={styles.kpiRow}>
         <KpiTile label="New" value={counts.pending} color="#E04F00" accent="#FFF1E6" />
         <KpiTile label="Preparing" value={counts.accepted} color="#1769E0" accent="#E6F1FF" />
         <KpiTile label="On the way" value={counts.out} color="#9A6B00" accent="#FFF8DB" />
-        <KpiTile label="Delivered today" value={counts.deliveredToday} color="#1E8E3E" accent="#E7F8EC" />
-      </ScrollView>
+        <KpiTile label="Delivered" value={counts.deliveredToday} color="#1E8E3E" accent="#E7F8EC" />
+      </View>
 
       {/* Filters */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
