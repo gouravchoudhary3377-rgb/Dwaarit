@@ -23,7 +23,7 @@ export default function Signup() {
     setLoading(true);
     try {
       const u = await signUp(email.trim(), password, name.trim());
-      router.replace(u.role === 'admin' ? '/(admin)/orders' : '/(tabs)/home');
+      router.replace(u.role === 'admin' ? '/admin/orders' : '/(tabs)/home');
     } catch (e: any) {
       setErr(e?.message ?? 'Signup failed');
     } finally {

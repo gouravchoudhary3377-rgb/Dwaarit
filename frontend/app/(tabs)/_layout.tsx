@@ -1,10 +1,11 @@
 import React from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 
 import { CartIcon, HomeIcon, OrdersIcon, ProfileIcon } from '@/src/components/icons/TabIcons';
 import { colors, typography } from '@/src/theme';
 import { useCart } from '@/src/store/cartStore';
+import { useAuth } from '@/src/context/AuthContext';
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -16,7 +17,12 @@ function Badge({ count }: { count: number }) {
 }
 
 export default function TabsLayout() {
+  const { user, loading } = useAuth();
   const count = useCart((s) => s.lines.reduce((a, b) => a + b.quantity, 0));
+
+  if (loading) return null;
+  if (!user) return <Redirect href="/(auth)/login" />;
+  if (user.role === 'admin') return <Redirect href="/admin/orders" />;
 
   return (
     <Tabs

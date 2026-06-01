@@ -14,7 +14,7 @@ export default function Gate() {
     if (!user) {
       router.replace('/(auth)/login');
     } else if (user.role === 'admin') {
-      router.replace('/(admin)/orders');
+      router.replace('/admin/orders');
     } else {
       router.replace('/(tabs)/home');
     }

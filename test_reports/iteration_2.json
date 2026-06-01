@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 2 retest after iteration-1 P0 fixes. Backend: 26/26 pytest PASS (100%, smoke re-confirmed). Frontend: ALL 4 P0 bugs from iteration 1 are FIXED — (1) admin login lands on /admin/orders, (2) customer login lands on /home, (3) admin order address renders on two lines (no literal '\\n'), (4) cart is cleared on signOut. Role guards work both ways: admin navigating to /home redirects back to /admin/orders, customer navigating to /admin/orders redirects to /home. Full end-to-end customer COD flow verified: home → add to cart (qty stepper, 13 items available) → cart ($13.47 / $4.99 totals computed correctly) → Proceed to checkout → fill address → Place order → /order-success?id=ord_xxx with Order ID + COD payment label. Admin view immediately shows the new pending order with Cancel + Mark Accepted action buttons. JWT_SECRET is now 52 chars — InsecureKeyLengthWarning gone. Two non-blocking RN-Web console warnings still present (shadow* deprecation, pointerEvents prop deprecation) — not iteration-2 blockers.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "checkout.tsx",
+        "issues": [
+          "TextField components for Phone, City, PIN have no placeholder and no testID — makes UI testing harder and gives the user no inline hint. Consider adding placeholders (e.g., '+91 98765 43210', 'Bengaluru', '560001') and testIDs (phone-input, city-input, pincode-input).",
+          "When required address fields are empty and the user taps Place order, nothing happens — no inline error and no toast. Add validation feedback (error text under each field or a banner)."
+        ]
+      },
+      {
+        "screen": "global (web)",
+        "issues": [
+          "RN-Web warnings persist: 'shadow*' style props deprecated → migrate to boxShadow in /app/frontend/src/theme/shadow tokens. Non-blocking.",
+          "RN-Web warning: props.pointerEvents deprecated — move to style.pointerEvents inside PrimaryButton/TextField. Non-blocking."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dwaarit_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/iteration_2.json"
+  ],
+  "action_items": [
+    "(Optional polish) Add testIDs to checkout TextFields (email, phone, city, pincode) and to ProductCard root, cart-item qty steppers, admin order action buttons — improves test stability.",
+    "(Optional polish) Surface validation errors on /checkout when required fields are missing instead of silently no-op on 'Place order'.",
+    "(Optional polish) Migrate shadow* style tokens to boxShadow and move pointerEvents to style to clean up RN-Web console."
+  ],
+  "critical_code_review_comments": [
+    "Route collision resolved correctly: admin routes moved out of (admin) group into flat /admin/* segment. URLs /admin/orders, /admin/products, /admin/account no longer collide with /(tabs)/* customer routes.",
+    "Role guards in both layouts are implemented via <Redirect/> after waiting on loading — correct pattern for Expo Router. Cross-redirects verified live.",
+    "AuthContext.signOut() now invokes useCart.getState().clear() — cart leak fix verified end-to-end (signed out with 3 cart items → re-logged in → cart shows 'Your cart is empty')."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (26/26 pytest)", "frontend": "100% on all 8 retest cases (admin route, customer route, address newline, cart-clear-on-signout, admin→tabs redirect, customer→admin redirect, full COD E2E to /order-success, admin sees pending order with status action buttons)"},
+  "seed_data_creation": "pytest creates and tears down 1 product per run; leaves 1-2 'delivered' COD test orders under demo@dwaarit.com (already present from iteration 1). One new COD order (id ord_3b5970ce8976, total $4.99, status pending) was created during frontend E2E and left in DB visible to admin.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All P0 bugs from iteration 1 are fixed and verified. Backend regression suite: pytest /app/backend/tests/ -v (3.86s, 26 passed). For frontend retests use mobile viewport 390x844. Login form has testID='login-btn' but TextFields rely on placeholder selectors (input[placeholder='you@example.com'] and input[placeholder='••••••••']). Product add buttons: testID='add-{product_id}'. Cart: testID='checkout-btn'. Checkout submit: testID='place-order-btn'. Checkout address TextFields lack testIDs/placeholders — fill by index (0=name prefilled, 1=phone, 2=line1, 3=line2, 4=city, 5=pincode, 6=notes).",
+  "rca_of_issue": "N/A — retest pass. All previously identified RCAs (route group URL collision, missing role guards, cart singleton not cleared on signOut, JSX literal-\\n in address) confirmed fixed in code AND in the running app."
+}

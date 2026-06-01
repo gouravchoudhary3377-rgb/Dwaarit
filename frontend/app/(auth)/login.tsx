@@ -45,7 +45,7 @@ export default function Login() {
     setLoading(true);
     try {
       const u = await signIn(email.trim(), password);
-      router.replace(u.role === 'admin' ? '/(admin)/orders' : '/(tabs)/home');
+      router.replace(u.role === 'admin' ? '/admin/orders' : '/(tabs)/home');
     } catch (e: any) {
       setErr(e?.message ?? 'Login failed');
     } finally {

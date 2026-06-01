@@ -132,9 +132,7 @@ export default function AdminOrders() {
                 </View>
 
                 <View style={styles.addrBox}>
-                  <Text style={styles.addrText}>
-                    {item.address.full_name} · {item.address.phone}\n{item.address.line1}{item.address.line2 ? `, ${item.address.line2}` : ''}, {item.address.city} {item.address.pincode}
-                  </Text>
+                  <Text style={styles.addrText}>{`${item.address.full_name} · ${item.address.phone}\n${item.address.line1}${item.address.line2 ? `, ${item.address.line2}` : ''}, ${item.address.city} ${item.address.pincode}`}</Text>
                 </View>
 
                 <View style={styles.cardFoot}>

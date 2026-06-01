@@ -1,10 +1,11 @@
 import React from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import Svg, { Path, Rect } from 'react-native-svg';
 
 import { OrdersIcon, ProfileIcon } from '@/src/components/icons/TabIcons';
 import { colors, typography } from '@/src/theme';
+import { useAuth } from '@/src/context/AuthContext';
 
 function BoxesIcon({ color }: { color: string }) {
   return (
@@ -18,6 +19,10 @@ function BoxesIcon({ color }: { color: string }) {
 }
 
 export default function AdminLayout() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Redirect href="/(auth)/login" />;
+  if (user.role !== 'admin') return <Redirect href="/(tabs)/home" />;
   return (
     <Tabs
       screenOptions={{

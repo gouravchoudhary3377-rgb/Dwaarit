@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { api, AuthResponse, AuthUser } from '@/src/api/client';
 import { storage } from '@/src/utils/storage';
+import { useCart } from '@/src/store/cartStore';
 
 const TOKEN_KEY = 'dwaarit.auth.token';
 
@@ -160,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearToken();
     setToken(null);
     setUser(null);
+    try { useCart.getState().clear(); } catch {}
   }, [token]);
 
   const refresh = useCallback(async () => {
