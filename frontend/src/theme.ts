@@ -1,4 +1,5 @@
 // Dwaarit design tokens — keep in sync with /app/design_guidelines.json
+import { Platform } from 'react-native';
 
 export const colors = {
   primary: '#FF5A00',
@@ -37,27 +38,36 @@ export const spacing = {
 } as const;
 
 export const shadow = {
-  card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  soft: {
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  strong: {
-    shadowColor: '#FF5A00',
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
+  card: Platform.select({
+    web: { boxShadow: '0 8px 16px rgba(0,0,0,0.06)' } as any,
+    default: {
+      shadowColor: '#000',
+      shadowOpacity: 0.06,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 4,
+    },
+  }) as any,
+  soft: Platform.select({
+    web: { boxShadow: '0 2px 8px rgba(0,0,0,0.04)' } as any,
+    default: {
+      shadowColor: '#000',
+      shadowOpacity: 0.04,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+  }) as any,
+  strong: Platform.select({
+    web: { boxShadow: '0 8px 16px rgba(255,90,0,0.18)' } as any,
+    default: {
+      shadowColor: '#FF5A00',
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
+    },
+  }) as any,
 } as const;
 
 export const typography = {
