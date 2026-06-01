@@ -318,7 +318,7 @@ backend:
 frontend:
   - task: "Phase 4: Order Detail — payment breakdown + Download Invoice PDF"
     implemented: true
-    working: "NA"
+    working: "partial"
     file: "frontend/app/order/[id].tsx"
     stuck_count: 0
     priority: "high"
@@ -327,30 +327,43 @@ frontend:
       - working: "NA"
         agent: "main"
         comment: "Added expo-print + expo-sharing. CTA 'Download invoice' fetches /orders/{id}/invoice and renders HTML to PDF. On web it triggers print dialog. Payment summary shows subtotal/delivery/wallet/payable + payment method pill."
+      - working: "partial"
+        agent: "testing"
+        comment: "Verified on web preview against three real orders (razorpay PAID, wallet-only PAID, COD). PASS: Subtotal/Delivery/Wallet applied/Payable/Total all render with correct math; Payment method pill renders 'Razorpay' / 'Wallet' / 'Cash on Delivery'; Payment status pill renders 'PAID' / 'PAID' / 'COD'; Download invoice CTA and Track live on map CTA both present (Track live correctly hidden on cancelled orders). FAIL #1 (HIGH): Status timeline highlights ALL FOUR steps (Order placed, Accepted, Out for delivery, Delivered) with filled orange check icons even when order.status='pending'. Should only highlight steps at/before the current status. Reproduced on ord_c5ecdd32f7e8 (status=pending). FAIL #2 (LOW): For orders with wallet_applied=0 the summary label is 'Total ₹X', for orders with wallet_applied>0 it switches to 'Payable ₹X'. Spec asks for 'Payable' on every order. Download invoice CTA functionality itself was not exercised because both Razorpay paths are blocked upstream by the WebView issue (see Wallet/Checkout tasks), but the CTA renders and is tappable."
   - task: "Phase 3: Wallet screen — top-up + transactions"
     implemented: true
-    working: "NA"
+    working: false
     file: "frontend/app/profile/wallet.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Top-up should trigger Razorpay mock flow and update balance + show new credit txn. Empty-state acceptable for fresh users."
+      - working: false
+        agent: "testing"
+        comment: "CRITICAL BLOCKER on web preview. Modal opens correctly, chips ₹200/₹500/₹1000/₹2000 render, 'Pay ₹X' CTA fires POST /api/payments/razorpay/create-order successfully (200, mode=mock). BUT the embedded RazorpayCheckout WebView renders the literal red error string 'React Native WebView does not support this platform.' so there is NO Simulate success / Simulate failure button to click on web. Result: /api/wallet/razorpay/verify is never called from the UI, wallet balance is never credited via this path on web preview. Backend is fine — the failure is purely the missing web fallback in /app/frontend/src/components/RazorpayCheckout.tsx (react-native-webview ships an empty web shim). Fix is platform-split: on Platform.OS==='web', replace WebView with a plain RN View that exposes the same Simulate success/failure CTAs and posts to the same callbacks. NOTE: balance + transactions list itself renders correctly (saw ₹2,500 balance and full txn history including prior 'Wallet top-up via Razorpay' rows that must have been created on native earlier)."
   - task: "Phase 3: Checkout — Razorpay/Wallet/COD selection"
     implemented: true
-    working: "NA"
+    working: false
     file: "frontend/app/checkout.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Verify wallet-apply toggle reduces payable, Razorpay mock places order with payment_status=paid, COD still works as fallback."
+      - working: false
+        agent: "testing"
+        comment: "MIXED on web preview. PASS: Checkout screen renders the new Phase 3 layout (Items total / Delivery / To pay), all 3 payment options visible (Cash on Delivery, UPI/Cards/Netbanking, Dwaarit Wallet with balance pill), 'Use wallet balance' switch with 'Apply ₹X from wallet' helper text. COD path WORKS end-to-end (order placed, lands on order detail). CRITICAL BLOCKER (same root cause as Wallet task): selecting 'UPI / Cards / Netbanking' and tapping 'Pay & place order' opens the Razorpay mock WebView which on web only prints 'React Native WebView does not support this platform.' → no way to Simulate success → order stays pending forever / never gets payment_status=paid on web preview. ADDITIONAL FRONTEND BUG (CRITICAL, separate root cause): app/_layout.tsx never mounts the AddressAuthSync component (src/components/AddressAuthSync.tsx exists but is dead code), so useAddressStore.setAuthToken is never called → /api/addresses GET never runs on login → user always sees 'No saved addresses yet' on /checkout even when the backend has saved addresses. I worked around it by using the /location → 'Enter manually' flow which writes to the local store, but a real user opening a fresh device will be unable to check out without re-adding their address. Also saw one suspicious incident where tapping the 'Use wallet balance' switch appeared to also fire 'Place order' on the same gesture (placed a COD order without explicit tap) — couldn't reproduce 100%, flagged as MEDIUM."
 
 agent_communication:
+  - agent: "testing"
+    message: "Phase 3 + Phase 4 FRONTEND validation on web preview (http://localhost:3000) — MIXED results. PASS: Login (demo@dwaarit.com), Home + add-to-cart, /checkout new Phase 3 layout, COD path end-to-end (places order), /order/{id} renders Subtotal/Delivery/Wallet applied/Payable/Total with correct math + 'Razorpay'/'Wallet'/'Cash on Delivery' method pills + 'PAID'/'PAID'/'COD' status pills + Download invoice CTA + Track live on map CTA on live orders. FAIL — 3 frontend bugs, none of them backend: (1) CRITICAL — src/components/RazorpayCheckout.tsx uses react-native-webview which has no web shim, so BOTH the wallet top-up Razorpay flow and the checkout Razorpay flow dead-end on a screen that literally says 'React Native WebView does not support this platform.' — there is no Simulate success button reachable on web preview, so neither /api/wallet/razorpay/verify nor /api/orders/{id}/payment/verify is ever called from the UI. Fix is a Platform.OS==='web' branch in RazorpayCheckout.tsx that renders Simulate success/failure as plain Pressables (or an iframe wrapping the same HTML). (2) CRITICAL — app/_layout.tsx never mounts <AddressAuthSync /> (the component exists at src/components/AddressAuthSync.tsx but is dead code), so useAddressStore.setAuthToken is never called on login → /api/addresses GET never fires → /checkout shows 'No saved addresses yet' even for users who already have backend-stored addresses. Verified via network panel: 0 hits on /api/addresses across the entire session. Fix: import + mount AddressAuthSync inside the RootLayout tree. (3) HIGH — app/order/[id].tsx status timeline renders all 4 steps (placed/accepted/out-for-delivery/delivered) with filled orange check icons even when status='pending'. Should gate by current step index. Minor #1: order screen shows 'Total' instead of 'Payable' when wallet_applied=0 (spec asks Payable on every order). Minor #2: tapping the 'Use wallet balance' Switch on /checkout once also fired the underlying 'Place order' button on the same gesture (placed an unintended COD order). Full report: /app/test_reports/iteration_10.json. NO frontend code was modified per instructions — diagnose-only run."
+
+
   - agent: "main"
     message: "Restarted Expo. Polished Product Detail screen. Please run full backend + frontend E2E (customer + admin). Credentials in /app/memory/test_credentials.md (admin@dwaarit.com / Admin@123). Customer can register a fresh account."
   - agent: "main"

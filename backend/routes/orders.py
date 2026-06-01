@@ -180,22 +180,24 @@ async def admin_update_order_status(
         {"order_id": order_id},
         {"$set": {"status": body.status, "updated_at": datetime.now(timezone.utc)}},
     )
-    # Refund to wallet if cancelled
+    # Refund to wallet if cancelled (Blinkit-style):
+    #   • Always refund any wallet_applied portion.
+    #   • Refund prepaid (razorpay) payable on top of that when payment_status == 'paid'.
+    #   • For COD orders nothing extra is refunded since cash was never collected,
+    #     but wallet_applied (if any) must still come back to the wallet.
     if body.status == "cancelled" and order.get("status") != "cancelled":
-        refund_amt = round(float(order.get("payable", 0.0)) + float(order.get("wallet_applied", 0.0)), 2)
-        if refund_amt > 0 and order.get("payment_status") in ("paid", "cod"):
-            # Only refund prepaid portion. For COD where nothing was paid, skip cash refund.
-            actual_refund = round(float(order.get("wallet_applied", 0.0))
-                                  + (float(order.get("payable", 0.0)) if order.get("payment_status") == "paid" else 0.0), 2)
-            if actual_refund > 0:
-                await db.wallet_txns.insert_one({
-                    "txn_id": f"wtxn_{uuid.uuid4().hex[:12]}",
-                    "user_id": order["user_id"],
-                    "type": "refund",
-                    "amount": actual_refund,
-                    "note": f"Refund for cancelled order {order_id}",
-                    "order_id": order_id,
-                    "created_at": datetime.now(timezone.utc),
-                })
+        wallet_part = float(order.get("wallet_applied", 0.0))
+        prepaid_part = float(order.get("payable", 0.0)) if order.get("payment_status") == "paid" else 0.0
+        actual_refund = round(wallet_part + prepaid_part, 2)
+        if actual_refund > 0:
+            await db.wallet_txns.insert_one({
+                "txn_id": f"wtxn_{uuid.uuid4().hex[:12]}",
+                "user_id": order["user_id"],
+                "type": "refund",
+                "amount": actual_refund,
+                "note": f"Refund for cancelled order {order_id}",
+                "order_id": order_id,
+                "created_at": datetime.now(timezone.utc),
+            })
     doc = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
     return doc
