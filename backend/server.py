@@ -142,6 +142,21 @@ class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
 
+class Category(BaseModel):
+    slug: str
+    name: str
+    icon: str = ""  # emoji or icon hint
+    gallery: List[str] = Field(default_factory=list)  # curated image URLs
+    is_default: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CategoryIn(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    icon: str = ""
+    gallery: List[str] = Field(default_factory=list)
+
+
 # ---------- Helpers ----------
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
@@ -360,6 +375,41 @@ async def admin_delete_product(product_id: str, _: dict = Depends(require_admin)
     return {"ok": True}
 
 
+# ---------- Category Routes ----------
+def _slugify(name: str) -> str:
+    return "-".join(name.lower().split())
+
+
+@api.get("/categories", response_model=List[Category])
+async def list_categories_full():
+    docs = await db.categories.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+    return [Category(**d) for d in docs]
+
+
+@api.post("/admin/categories", response_model=Category)
+async def admin_create_category(body: CategoryIn, _: dict = Depends(require_admin)):
+    slug = _slugify(body.name)
+    if await db.categories.find_one({"slug": slug}):
+        raise HTTPException(409, "Category already exists")
+    cat = Category(slug=slug, name=body.name.strip(), icon=body.icon, gallery=body.gallery, is_default=False)
+    await db.categories.insert_one(cat.dict())
+    return cat
+
+
+@api.delete("/admin/categories/{slug}")
+async def admin_delete_category(slug: str, _: dict = Depends(require_admin)):
+    cat = await db.categories.find_one({"slug": slug})
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    if cat.get("is_default"):
+        raise HTTPException(400, "Cannot delete a default category")
+    in_use = await db.products.count_documents({"category": cat["name"]})
+    if in_use > 0:
+        raise HTTPException(400, f"Category in use by {in_use} products")
+    await db.categories.delete_one({"slug": slug})
+    return {"ok": True}
+
+
 # ---------- Order Routes ----------
 @api.post("/orders")
 async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
@@ -460,11 +510,13 @@ async def on_startup():
     await db.user_sessions.create_index("expires_at", expireAfterSeconds=0)
     await db.products.create_index("product_id", unique=True)
     await db.products.create_index("category")
+    await db.categories.create_index("slug", unique=True)
     await db.orders.create_index("order_id", unique=True)
     await db.orders.create_index("user_id")
 
     # Seed admin + sample products if empty.
     await _seed_if_empty()
+    await _seed_categories_if_empty()
     log.info("Dwaarit API ready.")
 
 
@@ -553,6 +605,109 @@ async def _seed_if_empty():
 @app.on_event("shutdown")
 async def on_shutdown():
     client.close()
+
+
+async def _seed_categories_if_empty():
+    if await db.categories.count_documents({}) > 0:
+        return
+    defaults = [
+        {
+            "name": "Fruits", "icon": "🍎",
+            "gallery": [
+                "https://images.unsplash.com/photo-1619546813926-a78fa6372cd2?w=600&q=80",
+                "https://images.unsplash.com/photo-1587132137056-bfbf0166836e?w=600&q=80",
+                "https://images.unsplash.com/photo-1557800636-894a64c1696f?w=600&q=80",
+                "https://images.unsplash.com/photo-1547514701-42782101795e?w=600&q=80",
+                "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=600&q=80",
+            ],
+        },
+        {
+            "name": "Vegetables", "icon": "🥦",
+            "gallery": [
+                "https://images.unsplash.com/photo-1615486171815-2611a6e3cd02?w=600&q=80",
+                "https://images.unsplash.com/photo-1617130094141-532436117aa1?w=600&q=80",
+                "https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=600&q=80",
+                "https://images.unsplash.com/photo-1587049633312-d628ae50a8ae?w=600&q=80",
+                "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?w=600&q=80",
+            ],
+        },
+        {
+            "name": "Dairy & Eggs", "icon": "🥛",
+            "gallery": [
+                "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600&q=80",
+                "https://images.unsplash.com/photo-1585083969600-495ee7e3604b?w=600&q=80",
+                "https://images.unsplash.com/photo-1536816579748-4ecb3f03d72a?w=600&q=80",
+                "https://images.unsplash.com/photo-1683314573422-649a3c6ad784?w=600&q=80",
+                "https://images.pexels.com/photos/5946755/pexels-photo-5946755.jpeg?w=600",
+            ],
+        },
+        {
+            "name": "Bakery", "icon": "🍞",
+            "gallery": [
+                "https://images.unsplash.com/photo-1534620808146-d33bb39128b2?w=600&q=80",
+                "https://images.unsplash.com/photo-1598373182133-52452f7691ef?w=600&q=80",
+                "https://images.unsplash.com/photo-1597733153203-a54d0fbc47de?w=600&q=80",
+                "https://images.unsplash.com/photo-1598839950984-034f6dc7b495?w=600&q=80",
+                "https://images.pexels.com/photos/9120377/pexels-photo-9120377.jpeg?w=600",
+            ],
+        },
+        {
+            "name": "Snacks", "icon": "🍿",
+            "gallery": [
+                "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=600&q=80",
+                "https://images.unsplash.com/photo-1699666397768-0126340e880a?w=600&q=80",
+                "https://images.unsplash.com/photo-1623660053975-cf75a8be0908?w=600&q=80",
+                "https://images.unsplash.com/photo-1610450949065-1f2841536c88?w=600&q=80",
+                "https://images.pexels.com/photos/34466116/pexels-photo-34466116.jpeg?w=600",
+            ],
+        },
+        {
+            "name": "Beverages", "icon": "🥤",
+            "gallery": [
+                "https://images.unsplash.com/photo-1616118132534-381148898bb4?w=600&q=80",
+                "https://images.unsplash.com/photo-1625865019845-7b2c89b8a8a9?w=600&q=80",
+                "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600&q=80",
+                "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&q=80",
+                "https://images.unsplash.com/photo-1620160428336-bd4dd3e90415?w=600&q=80",
+            ],
+        },
+        {
+            "name": "Staples", "icon": "🌾",
+            "gallery": [
+                "https://images.unsplash.com/photo-1686820740687-426a7b9b2043?w=600&q=80",
+                "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&q=80",
+                "https://images.pexels.com/photos/36346840/pexels-photo-36346840.jpeg?w=600",
+                "https://images.pexels.com/photos/18328392/pexels-photo-18328392.jpeg?w=600",
+                "https://images.unsplash.com/photo-1643622357625-c013987d90e7?w=600&q=80",
+            ],
+        },
+        {
+            "name": "Personal Care", "icon": "🧴",
+            "gallery": [
+                "https://images.unsplash.com/photo-1701992678972-d5a053ad0fb0?w=600&q=80",
+                "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&q=80",
+                "https://images.unsplash.com/photo-1747858989102-cca0f4dc4a11?w=600&q=80",
+                "https://images.unsplash.com/photo-1619451427882-6aaaded0cc61?w=600&q=80",
+                "https://images.unsplash.com/photo-1515377905703-c4788e51af15?w=600&q=80",
+            ],
+        },
+        {
+            "name": "Household", "icon": "🧹",
+            "gallery": [
+                "https://images.pexels.com/photos/5217898/pexels-photo-5217898.jpeg?w=600",
+                "https://images.unsplash.com/photo-1617182700621-c1eb90a7e866?w=600&q=80",
+                "https://images.pexels.com/photos/10566513/pexels-photo-10566513.jpeg?w=600",
+                "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=600&q=80",
+                "https://images.pexels.com/photos/10566507/pexels-photo-10566507.jpeg?w=600",
+            ],
+        },
+    ]
+    docs = []
+    for d in defaults:
+        slug = _slugify(d["name"])
+        docs.append(Category(slug=slug, name=d["name"], icon=d["icon"], gallery=d["gallery"], is_default=True).dict())
+    await db.categories.insert_many(docs)
+    log.info("Seeded %d default categories.", len(docs))
 
 
 app.include_router(api)
