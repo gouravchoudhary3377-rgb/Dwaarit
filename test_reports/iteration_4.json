@@ -1,0 +1,65 @@
+{
+  "summary": "Address Book / Saved Locations feature is only PARTIALLY wired. /location screen itself works correctly (loads, Nominatim search returns results for 'Indiranagar Bangalore', GPS + manual buttons render, label chips Home/Work/Other present in edit mode, save logic + zustand persistence look correct). Profile screen renders correctly (DiceBear notionists-neutral avatar, name, email, stats, menu rows, sign-out). HOWEVER the address book is DISCONNECTED from the three required entry points: (1) Home header chip is hardcoded 'Home / Hi Demo · Delivering to your address' — does NOT read activeAddress from store and has NO onPress to navigate to /location (Pressable styles.locWrap has no onPress handler); (2) Profile -> 'Saved Addresses' row calls notReady('Saved Addresses') instead of router.push('/location'); (3) Checkout still renders the legacy TextField form (Full name / Phone / Address line 1 / Address line 2 / City / PIN) — NOT a selectable list of saved addresses, and useAddressStore is not imported. As a result a saved address never surfaces in checkout, the home chip never updates, and there is no in-app navigation path to /location at all (only reachable via direct URL). Login (demo@dwaarit.com/Demo@123) -> /(tabs)/home redirect works. End-to-end COD order flow was NOT re-tested because checkout still uses the form, not the new selectable list (already validated in iteration_3).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "home.tsx header location chip",
+        "issue": "Chip is hardcoded to show 'Home' + 'Hi Demo · Delivering to your address' regardless of the address store. activeAddress is computed (line 82) but never rendered. The Pressable wrapper (styles.locWrap) has NO onPress so tapping the chip does nothing — confirmed in browser, URL stays on /home. Spec requires Blinkit-style label like 'Home — 5-min delivery' from active address OR 'Set delivery address' prompt when empty, and tapping must navigate to /location. Imports displayLabel and shortAddress are dead code. Reference: /app/frontend/app/(tabs)/home.tsx:23, 82-84, 268-285.",
+        "testID": "missing (suggest 'home-location-chip')",
+        "priority": "HIGH"
+      },
+      {
+        "component": "checkout.tsx delivery address section",
+        "issue": "Still uses the legacy auto-fill TextField form (Full name / Phone / Address line 1 / Address line 2 / City / PIN). Spec requires a SELECTABLE LIST of saved addresses from useAddressStore, plus an 'Add new address' affordance that routes to /location?from=checkout. useAddressStore is not even imported in checkout.tsx. Saved addresses from /location are therefore unreachable from order placement. Reference: /app/frontend/app/checkout.tsx:1-126 (no addressStore import, lines 36-49 are the form state).",
+        "testID": "place-order-btn (present, but address selection UI is missing)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "profile.tsx 'Saved Addresses' menu row",
+        "issue": "Row calls notReady('Saved Addresses') instead of router.push('/location'). Tapping it does nothing actionable (Alert.alert is a no-op on web preview). Spec requires this to open the address book. Reference: /app/frontend/app/(tabs)/profile.tsx:306.",
+        "testID": "missing",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Address book end-to-end",
+        "issue": "/location -> save address -> active address available everywhere is BROKEN at the consumer side. /location correctly persists to zustand+AsyncStorage via addressStore.upsert/setActive, but no consumer (Home chip, Checkout, Profile) reads from useAddressStore. Net effect: feature is invisible to users.",
+        "affected_testIDs": ["location-search-input", "use-current-location-btn", "add-address-manual-btn", "save-address-btn", "place-order-btn"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "global",
+        "issues": [
+          "Console warning persists from earlier iteration: 'props.pointerEvents is deprecated. Use style.pointerEvents' on auth + home screens (non-blocking)."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dwaarit_api.py",
+    "/app/test_reports/iteration_4.json"
+  ],
+  "action_items": [
+    "home.tsx: (a) Replace hardcoded 'Home' / sub label with displayLabel(activeAddress) + shortAddress(activeAddress) (already imported) — fall back to 'Set delivery address' + 'Tap to choose where to deliver' when activeAddress is null. (b) Add onPress={() => router.push('/location')} to the styles.locWrap Pressable. (c) Add testID='home-location-chip' for testing. Also ensure useAddressStore().hydrate() runs on app start (check _layout.tsx) so the chip reflects persisted state on cold launch.",
+    "checkout.tsx: Replace the TextField address form with a SELECTABLE LIST sourced from useAddressStore(state => state.addresses). Show each saved address as a radio-style card with displayLabel + shortAddress + pincode, defaulting selection to activeId. Provide an '+ Add new address' card that routes to /location?from=checkout. Send the selected SavedAddress (full_name, phone, line1, line2, city, pincode) to POST /api/orders. Gate Place Order on selection.length > 0 && cart non-empty.",
+    "profile.tsx:306 — change Saved Addresses MenuRow onPress to router.push('/location'). Remove notReady wiring for this row.",
+    "Optional polish: add a 5-min ETA suffix to the home chip subtitle (e.g. 'Home · 5-min delivery') when activeAddress is set, matching the spec's Blinkit-style copy."
+  ],
+  "critical_code_review_comments": [
+    "addressStore.ts is solid: persistence via storage util, hydrate() guards JSON parse errors, setActive validates membership, upsert prepends new entries and auto-sets first as active. No issues.",
+    "geocoding.ts correctly avoids setting User-Agent on web (browsers reject custom UA) and debounces are caller-side — confirmed Nominatim returns 6 results for 'Indiranagar Bangalore' in browser test.",
+    "location.tsx looks complete: testIDs present (location-search-input, use-current-location-btn, add-address-manual-btn, save-address-btn), validates label/custom_label/required fields, supports from=checkout return path. No changes needed in this file.",
+    "Backend AddressIn (server.py:122) has fields: full_name, phone, line1, line2(default ''), city, pincode — note: NO 'state' field, so the review request's mention of 'state' in the schema is inaccurate. SavedAddress.state is not sent today and that's correct. line2 is OPTIONAL with default '' on backend, so frontend must always pass a string (currently checkout sends line2 which may be empty string — fine)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (not retested, per spec)", "frontend": "40% (/location + profile render OK; home chip, checkout selection, profile->location route all broken)" },
+  "seed_data_creation": "None. No new orders placed because checkout flow is blocked by the address-list bug.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "After E1 fixes the three wiring points, retest: (1) Login -> Home chip shows 'Set delivery address' since no address is saved yet; tap chip -> lands on /location. (2) On /location, type 'Indiranagar Bangalore' in [data-testid=location-search-input], wait ~2s for debounced Nominatim call, tap first 'Indiranagar' result, pick Home, fill full_name='Demo Customer', phone='9999999999', leave line1 prefilled, set city='Bengaluru', pincode='560038', tap [data-testid=save-address-btn]. (3) Back on home, chip should now show 'Home — <short address>'. (4) Add any product to cart (e.g. tap an ADD button on /home), go to /checkout — expect a SELECTABLE address list with the saved Home address pre-selected. There should also be an 'Add new address' card routing to /location?from=checkout. (5) Tap Place Order, expect /order-success with order id; (6) /profile -> 'Saved Addresses' must navigate to /location. Credentials: demo@dwaarit.com / Demo@123.",
+  "rca_of_issue": "The /location screen and addressStore were built correctly in isolation, but the three CONSUMER surfaces (home header, checkout, profile) were never updated to read from useAddressStore or to navigate to /location. home.tsx:82 already selects activeAddress from the store but the JSX at 268-285 ignores it and shows the hardcoded label; the Pressable also has no onPress. checkout.tsx has zero imports from @/src/store/addressStore — it still uses the original useState form. profile.tsx:306 left a TODO-style notReady stub. Fix is mechanical, scoped to 3 files."
+}

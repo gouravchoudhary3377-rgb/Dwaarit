@@ -193,29 +193,62 @@ frontend:
     file: "frontend/app/admin/products.tsx, frontend/app/admin/orders.tsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Verify add/edit/delete product and changing order status reflects on customer side."
+  - task: "Address Book + Location screen (GPS + Nominatim search + Save)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/location.tsx, frontend/src/store/addressStore.ts, frontend/src/utils/geocoding.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "New address book using expo-location + OpenStreetMap Nominatim. Stores addresses via Zustand+AsyncStorage. Verify GPS auto-detect, search results, label selection (Home/Work/Other), save and that the active address propagates."
+  - task: "Home header active-address chip (Blinkit-style 'Home — 5-min delivery')"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/home.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Header chip reads activeAddress from store. Tapping should route to /location. If no address saved, chip should prompt to set delivery address."
+  - task: "Checkout selectable saved-address list (replaces auto-fill form)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/checkout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Customer can pick from saved addresses; selected address is submitted to backend AddressIn schema {full_name, phone, line1, line2, city, state, pincode}. Also verify 'Add new address' CTA navigates to /location."
 
 metadata:
   created_by: "main_agent"
-  version: "1.1"
-  test_sequence: 1
+  version: "1.2"
+  test_sequence: 2
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Route guards: customers->tabs, admins->admin, unauth->login"
-    - "Product Detail screen polish (in-cart awareness, stock badge, toast, related)"
-    - "Customer order detail screen with status timeline"
-    - "Cart + Checkout (COD) flow"
-    - "Admin: product CRUD + order status update"
+    - "Address Book + Location screen (GPS + Nominatim search + Save)"
+    - "Home header active-address chip (Blinkit-style 'Home — 5-min delivery')"
+    - "Checkout selectable saved-address list (replaces auto-fill form)"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
     message: "Restarted Expo. Polished Product Detail screen. Please run full backend + frontend E2E (customer + admin). Credentials in /app/memory/test_credentials.md (admin@dwaarit.com / Admin@123). Customer can register a fresh account."
+  - agent: "main"
+    message: "P0 frontend validation: please test the new Address Book wiring end-to-end. Login as demo@dwaarit.com / Demo@123. (1) On Home (tabs), confirm a header chip showing the active delivery address (or a 'Set delivery address' prompt if none) and that tapping it routes to /location. (2) On /location, verify search via OpenStreetMap Nominatim returns results, that selecting a result + label (Home/Work/Other) and saving stores the address and updates the active address on Home. expo-location GPS may not work in headless web — selecting via search is the primary path. (3) Add an item to cart → go to Checkout, confirm the selectable saved-address list renders, selecting an address enables 'Place Order', and placing a COD order succeeds and routes to order-success. Also verify profile.tsx still renders with DiceBear avatar correctly. SKIP backend retesting — focus on frontend only."
