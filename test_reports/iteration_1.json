@@ -1,0 +1,69 @@
+{
+  "summary": "Dwaarit grocery app first-pass: 26/26 backend pytest cases PASS (auth, products, admin product CRUD, orders, admin order status). Frontend customer flow (login routing, products list + categories + search, add-to-cart, cart with qty stepper + total, checkout form, COD order via backend) all render and function. Admin flow (login routes to /(admin)/orders, sees all customer orders, products list with edit/delete actions, modal form) renders correctly. Two real frontend bugs found: (1) literal '\\n' rendered in admin orders address card, (2) URL/group collision + missing role guards on (tabs) and (admin) layouts cause customer hitting /orders directly (e.g., from order-success 'Track order') to resolve to admin layout and trigger 403. Backend is solid; frontend needs route guards + one JSX fix.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "JWT signing", "issue": "InsecureKeyLengthWarning: HMAC key 28 bytes (<32). Use a 32+ byte JWT_SECRET in backend/.env."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "(admin)/orders.tsx",
+        "issue": "Address line shows literal '\\n' because the escape is outside a JS expression in JSX. File: /app/frontend/app/(admin)/orders.tsx:136. Verified in screenshot: 'TEST Buyer · 5551234567\\n1 Test St, Testville 12345'. Fix: move the address composition into an expression — e.g. <Text>{`${a.full_name} · ${a.phone}\\n${a.line1}${a.line2 ? ', '+a.line2 : ''}, ${a.city} ${a.pincode}`}</Text>.",
+        "testID": "n/a",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Customer Orders / Group routing",
+        "issue": "Both app/(tabs)/orders.tsx and app/(admin)/orders.tsx serve the URL /orders. On the web preview, a customer that navigates to /orders directly (which is what happens after order-success 'Track order' invokes router.replace('/(tabs)/orders'), and what the browser address bar shows) lands on the ADMIN orders layout. The screen then calls GET /api/admin/orders and the backend correctly returns 403 ('admin orders load failed: Admin only'). Same risk for /products. Neither (tabs)/_layout.tsx nor (admin)/_layout.tsx has a role guard. Fix: add a role guard at each layout — in (admin)/_layout.tsx redirect non-admins to /(tabs)/home; in (tabs)/_layout.tsx redirect admins to /(admin)/orders. Also consider renaming admin routes (e.g., /admin/orders, /admin/products) to avoid URL collision.",
+        "affected_testIDs": []
+      },
+      {
+        "flow": "Logout / cart hydration",
+        "issue": "Zustand cart store is global and is NOT cleared on sign-out (only on successful checkout via clear()). If a customer signs out with items in cart and a different user signs in, the previous cart leaks. Recommend calling useCart.getState().clear() inside AuthContext.signOut(). (Not blocking but a real correctness issue.)",
+        "affected_testIDs": []
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "global (web)",
+        "issues": [
+          "Console warns: 'shadow*' style props are deprecated, use boxShadow (RN Web). Several theme tokens (shadow.soft/card) still emit shadowColor/shadowOffset/shadowRadius. Non-blocking on native, noisy on web.",
+          "Console warns: props.pointerEvents is deprecated; use style.pointerEvents. Coming from a child component (likely PrimaryButton/TextField). Non-blocking."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_dwaarit_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix /app/frontend/app/(admin)/orders.tsx:136 — wrap the address text inside a JS template literal so \\n becomes a real newline.",
+    "Add role guards to /app/frontend/app/(tabs)/_layout.tsx and /app/frontend/app/(admin)/_layout.tsx using useAuth(): redirect to /(auth)/login if no user, and cross-redirect when role mismatches the layout group.",
+    "Optionally rename admin routes from (admin) group to /admin/* (move files to app/admin/orders.tsx etc.) to eliminate the /orders & /products URL collision between (tabs) and (admin) groups.",
+    "Clear cart on sign-out in AuthContext.signOut() to avoid leaking cart between users.",
+    "Set JWT_SECRET in backend/.env to a 32+ byte value to silence InsecureKeyLengthWarning."
+  ],
+  "critical_code_review_comments": [
+    "(admin)/orders.tsx:136 — '\\n' written as JSX text (not inside a {`...`} expression) renders literally. Confirmed visually.",
+    "(tabs)/_layout.tsx and (admin)/_layout.tsx have NO role/auth guard — any authenticated (or even unauth, since web Expo Router doesn't auto-redirect) user can deep-link into either group. Auth-check belongs in the group layouts via <Redirect/>.",
+    "cartStore is a singleton zustand store with no per-user namespacing and signOut() does not clear it.",
+    "URL collision: two routes resolve to /orders and /products. Expo Router does not guarantee which wins for direct URL nav — observed admin layout taking precedence on web.",
+    "server.py JWT secret length below 32 bytes triggers PyJWT InsecureKeyLengthWarning."
+  ],
+  "updated_files": [
+    "/app/backend/tests/__init__.py (new, empty)",
+    "/app/backend/tests/test_dwaarit_api.py (new, 26 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (26/26 pytest)", "frontend": "~85% — login/home/cart/checkout-form/admin-orders/admin-products render and APIs wire up; routing/role-guard bug + admin address \\n bug remain"},
+  "seed_data_creation": "No persistent seed created. pytest creates unique TEST_ users via signup, one TEST product (created → patched → deleted, leaves DB clean), and one COD order from the demo customer that is left in 'delivered' state (visible in /api/admin/orders). Safe to leave or wipe.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/test_dwaarit_api.py is the regression baseline — re-run with `pytest /app/backend/tests/ -v`. Credentials live in /app/memory/test_credentials.md. Frontend mobile viewport 390x844. Note: web preview at http://localhost:3000 mirrors public EXPO_PUBLIC_BACKEND_URL via /api routing. After fixes, verify: (a) customer 'Track order' lands on customer Orders tab (NOT admin), (b) admin orders screen shows address on two lines, (c) signing out clears the cart. The 'shadow*' and 'pointerEvents' console warnings are React Native Web noise, not blockers.",
+  "rca_of_issue": "Admin/customer route collision RCA: Expo Router groups `(tabs)` and `(admin)` both define `orders.tsx` and (admin also) `products.tsx`. Group parentheses are not part of the URL, so both produce the SAME URL (/orders, /products). When the user navigates via a typed URL or a deep-link `router.replace('/(tabs)/orders')` on web, the router strips the group and resolves to whichever route registered first; testing shows the (admin) variant winning on /orders. Combined with the absence of role guards in either layout, customers can render the admin screen, which immediately fails its GET /api/admin/orders with 403. Mitigation: (i) add role guards via <Redirect/> in both layouts using useAuth(); (ii) rename admin routes to a distinct URL prefix (e.g., move app/(admin)/* → app/admin/*), eliminating the collision at the URL level."
+}
