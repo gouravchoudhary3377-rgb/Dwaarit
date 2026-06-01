@@ -263,11 +263,92 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Profile tab routing (Edit / Wallet / Wishlist)"
-    - "Orders tab Reorder + Track CTAs"
+    - "Phase 3: Wallet top-up (Razorpay mock) + balance display"
+    - "Phase 3: Checkout — wallet apply + Razorpay mock payment + COD"
+    - "Phase 4: Order Detail screen — payment breakdown + Download Invoice PDF"
+    - "Phase 4: Invoice endpoint /api/orders/{id}/invoice returns full data"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+backend:
+  - task: "Invoice endpoint /api/orders/{order_id}/invoice"
+    implemented: true
+    working: true
+    file: "backend/routes/orders.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Returns invoice_no, items, subtotal/delivery_fee/wallet_applied/payable, payment_method/status. Verify auth-gated (user can only fetch own, admin can fetch any)."
+      - working: true
+        agent: "testing"
+        comment: "PASS (Phase 4). All required fields present (invoice_no, items, subtotal, delivery_fee, wallet_applied, payable, payment_method, payment_status, address, customer). invoice_no prefixed 'INV-'. AuthZ verified: owner=200, unauth=401, OTHER customer=403, admin=200. Covered by tests/test_phase34_wallet_payments_invoice.py::TestOrderDetailAndInvoice (6/6 pass)."
+  - task: "Wallet top-up + Razorpay mock verification"
+    implemented: true
+    working: true
+    file: "backend/routes/wallet.py, backend/routes/payments.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Razorpay keys are empty so endpoints should run in mock-mode. Verify /api/payments/order returns a (mock) order, /api/wallet/razorpay/verify credits wallet, /api/wallet returns updated balance + txns."
+      - working: true
+        agent: "testing"
+        comment: "PASS (Phase 3). Note: actual route is POST /api/payments/razorpay/create-order (not /api/payments/order). GET /api/payments/config correctly reports razorpay_enabled=false + empty key_id. create-order returns mode='mock', order_id prefixed 'order_mock_', amount in paise. POST /api/wallet/razorpay/verify with fake payment_id/signature credits the wallet (balance goes up by amount, type='topup' txn added). Idempotency verified: re-posting same payment_id returns duplicate=true and does NOT double-credit. 4/4 tests pass."
+  - task: "Checkout — wallet apply + payment method handling"
+    implemented: true
+    working: true
+    file: "backend/routes/orders.py, backend/routes/payments.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "POST /api/orders supports payment_method=cod|wallet|razorpay and wallet_applied amount. Razorpay flow in mock-mode should mark payment_status=paid."
+      - working: true
+        agent: "testing"
+        comment: "PASS (Phase 3). All three payment paths exercised end-to-end: (a) payment_method='wallet' with use_wallet=true -> wallet_applied>0, debit txn appears, balance reduced; payment_status='paid' when fully covered. (b) payment_method='razorpay' -> creates order pending, /payments/razorpay/create-order + /payments/razorpay/verify (mock signature) flips payment_status to 'paid' and persists razorpay_payment_id. (c) payment_method='cod' -> payment_status='cod', wallet_applied=0, payable==total. Admin PATCH /api/admin/orders/{id}/status to 'cancelled' on a fully-wallet-paid order generates a 'refund' wallet_txn and restores balance. Customer cannot call admin endpoint (403). GAP noted (non-blocking): if a wallet order ends with payment_status='pending' (partial wallet only), cancellation does NOT refund the wallet_applied portion because backend gate is payment_status in ('paid','cod'). Flag for E1 product review. Covered by TestOrdersWithPayments + TestAdminCancelRefund (5/5 pass)."
+
+frontend:
+  - task: "Phase 4: Order Detail — payment breakdown + Download Invoice PDF"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/order/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added expo-print + expo-sharing. CTA 'Download invoice' fetches /orders/{id}/invoice and renders HTML to PDF. On web it triggers print dialog. Payment summary shows subtotal/delivery/wallet/payable + payment method pill."
+  - task: "Phase 3: Wallet screen — top-up + transactions"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/profile/wallet.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Top-up should trigger Razorpay mock flow and update balance + show new credit txn. Empty-state acceptable for fresh users."
+  - task: "Phase 3: Checkout — Razorpay/Wallet/COD selection"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/checkout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Verify wallet-apply toggle reduces payable, Razorpay mock places order with payment_status=paid, COD still works as fallback."
 
 agent_communication:
   - agent: "main"
@@ -276,3 +357,5 @@ agent_communication:
     message: "P0 frontend validation: please test the new Address Book wiring end-to-end. Login as demo@dwaarit.com / Demo@123."
   - agent: "main"
     message: "Phase 2 UI validation needed. Login as demo@dwaarit.com / Demo@123. (1) Profile tab → tap the pencil icon → verify /profile/edit opens without crash and lets user update name/mobile. (2) Profile tab → tap 'Wallet' row → verify /profile/wallet opens and lists balance + recent transactions (empty state acceptable). (3) Profile tab → tap 'Wishlist' row → verify /profile/wishlist opens (empty state acceptable). (4) Orders tab → for any visible order verify 'Reorder' and 'Track order' buttons render and Reorder navigates to cart. SKIP backend retesting."
+  - agent: "testing"
+    message: "Phase 3 + Phase 4 BACKEND validation COMPLETE — 19/19 new tests pass, full suite 50/50. New file: backend/tests/test_phase34_wallet_payments_invoke.py (Wallet baseline, Razorpay-mock create-order + verify + idempotency, wallet/razorpay/cod order placement, order list/detail, invoice schema + authZ matrix [owner/unauth/other-user/admin], admin cancel -> wallet refund). KEY FINDINGS: (1) Actual top-up route is POST /api/payments/razorpay/create-order (NOT /api/payments/order as in the request) — request body is {amount, order_id?}. (2) Mock-mode confirmed: GET /api/payments/config returns razorpay_enabled=false, create-order returns mode='mock' + order_id prefixed 'order_mock_'. (3) Wallet verify is correctly idempotent (re-posting same payment_id returns duplicate=true, no double-credit). (4) Razorpay mock flow flips order.payment_status to 'paid' and persists razorpay_payment_id. (5) Invoice authZ matrix is fully correct: owner=200, unauth=401, other-customer=403, admin=200. (6) Admin cancel on a fully-wallet-paid order generates a 'refund' wallet_txn. NON-BLOCKING BUSINESS-LOGIC GAP TO REVIEW WITH PRODUCT: cancelling a partial-wallet order (payment_status='pending', wallet_applied>0) does NOT refund the wallet_applied portion because the refund gate in routes/orders.py is payment_status in ('paid','cod'). Consider refunding wallet_applied regardless of remaining payable. ALSO FIXED: stale assertion in tests/test_dwaarit_api.py::test_customer_create_order (was asserting order.total == subtotal but Phase 3 added a ₹25 flat delivery fee for orders <₹499); updated assertion to include expected_delivery. No backend code changes were required."

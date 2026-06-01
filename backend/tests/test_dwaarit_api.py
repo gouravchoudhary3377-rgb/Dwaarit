@@ -236,7 +236,10 @@ class TestOrders:
             {"product_id": products[0]["product_id"], "quantity": 2},
             {"product_id": products[1]["product_id"], "quantity": 1},
         ]
-        expected_total = round(products[0]["price"] * 2 + products[1]["price"] * 1, 2)
+        expected_subtotal = round(products[0]["price"] * 2 + products[1]["price"] * 1, 2)
+        # Phase 3 introduced a flat ₹25 delivery fee for orders under ₹499.
+        expected_delivery = 0.0 if expected_subtotal >= 499.0 else 25.0
+        expected_total = round(expected_subtotal + expected_delivery, 2)
         body = {
             "items": items,
             "address": {
@@ -255,6 +258,8 @@ class TestOrders:
         order = r.json()
         assert order["status"] == "pending"
         assert order["payment_method"] == "cod"
+        assert order["subtotal"] == expected_subtotal
+        assert order["delivery_fee"] == expected_delivery
         assert order["total"] == expected_total
         assert len(order["items"]) == 2
         TestOrders.order_id = order["order_id"]

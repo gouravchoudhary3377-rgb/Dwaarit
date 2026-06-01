@@ -141,6 +141,10 @@ export type Order = {
   user_id: string;
   user_email: string;
   items: OrderItem[];
+  subtotal?: number;
+  delivery_fee?: number;
+  wallet_applied?: number;
+  payable?: number;
   total: number;
   address: {
     full_name: string;
@@ -150,9 +154,27 @@ export type Order = {
     city: string;
     pincode: string;
   };
-  payment_method: 'cod' | 'card';
+  payment_method: 'cod' | 'card' | 'wallet' | 'razorpay';
+  payment_status?: 'pending' | 'paid' | 'cod' | 'failed';
   notes: string;
   status: 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled';
   created_at: string;
   updated_at: string;
+};
+
+export type Invoice = {
+  invoice_no: string;
+  order_id: string;
+  date: string;
+  customer: { name: string; email: string };
+  address: Order['address'];
+  items: OrderItem[];
+  subtotal: number;
+  delivery_fee: number;
+  wallet_applied: number;
+  payable: number;
+  total: number;
+  payment_method: string;
+  payment_status: string;
+  status: string;
 };

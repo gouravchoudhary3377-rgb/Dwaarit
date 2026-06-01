@@ -179,6 +179,13 @@ class RazorpayVerifyIn(BaseModel):
     order_id: Optional[str] = None
 
 
+class WalletRazorpayVerifyIn(BaseModel):
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+    amount: float = Field(gt=0)  # INR amount user topped up
+
+
 class SavePaymentMethodIn(BaseModel):
     kind: Literal["card", "upi"]
     label: str = ""

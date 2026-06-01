@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
-import { api, Order } from '@/src/api/client';
+import { api, Invoice, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge, Status } from '@/src/components/StatusBadge';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
@@ -89,8 +91,48 @@ export default function OrderDetail() {
 
   const cancelled = order.status === 'cancelled';
   const currentRank = rankOf(order.status);
-  const subtotal = order.items.reduce((s, it) => s + it.subtotal, 0);
-  const deliveryFee = 0;
+  const subtotal = order.subtotal ?? order.items.reduce((s, it) => s + it.subtotal, 0);
+  const deliveryFee = order.delivery_fee ?? 0;
+  const walletApplied = order.wallet_applied ?? 0;
+  const payable = order.payable ?? order.total;
+  const isLive = ['pending', 'accepted', 'out_for_delivery'].includes(order.status);
+
+  const onDownloadInvoice = async () => {
+    try {
+      const inv = await api.get<Invoice>(`/orders/${order.order_id}/invoice`, token);
+      const html = buildInvoiceHTML(inv);
+      if (Platform.OS === 'web') {
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.write(html);
+          w.document.close();
+          setTimeout(() => w.print?.(), 400);
+        }
+        return;
+      }
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Share invoice' });
+      } else {
+        Alert.alert('Invoice saved', uri);
+      }
+    } catch (e: any) {
+      Alert.alert('Invoice failed', e?.message || 'Could not generate invoice');
+    }
+  };
+
+  const onTrackLive = () => router.push({ pathname: '/order/[id]/track', params: { id: order.order_id } });
+
+  const paymentLabel = (() => {
+    switch (order.payment_method) {
+      case 'cod': return 'Cash on Delivery';
+      case 'wallet': return 'Wallet';
+      case 'razorpay': return 'Razorpay';
+      case 'card': return 'Card';
+      default: return String(order.payment_method || '—');
+    }
+  })();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -220,23 +262,146 @@ export default function OrderDetail() {
             <Text style={styles.payK}>Delivery fee</Text>
             <Text style={styles.payVfree}>{deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee)}</Text>
           </View>
+          {walletApplied > 0 ? (
+            <View style={styles.payRow}>
+              <Text style={styles.payK}>Wallet applied</Text>
+              <Text style={styles.payVwallet}>− {formatINR(walletApplied)}</Text>
+            </View>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.payRow}>
-            <Text style={styles.totalK}>Total</Text>
-            <Text style={styles.totalV}>{formatINR(order.total)}</Text>
+            <Text style={styles.totalK}>{walletApplied > 0 ? 'Payable' : 'Total'}</Text>
+            <Text style={styles.totalV}>{formatINR(payable)}</Text>
           </View>
           <View style={styles.payMethodRow}>
             <Text style={styles.payMethodLabel}>Payment method</Text>
             <View style={styles.payMethodPill}>
-              <Text style={styles.payMethodText}>
-                {order.payment_method === 'cod' ? 'Cash on Delivery' : 'Card'}
-              </Text>
+              <Text style={styles.payMethodText}>{paymentLabel}</Text>
             </View>
           </View>
+          {order.payment_status ? (
+            <View style={styles.payMethodRow}>
+              <Text style={styles.payMethodLabel}>Payment status</Text>
+              <View style={[styles.payMethodPill, payStatusStyle(order.payment_status).pill]}>
+                <Text style={[styles.payMethodText, payStatusStyle(order.payment_status).text]}>
+                  {order.payment_status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        {/* CTAs */}
+        <View style={{ gap: spacing.sm }}>
+          {isLive ? (
+            <Pressable onPress={onTrackLive} style={[styles.cta, styles.ctaPrimary]} android_ripple={{ color: '#ffffff22' }}>
+              <Text style={styles.ctaPrimaryText}>Track live on map</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={onDownloadInvoice} style={[styles.cta, styles.ctaSecondary]} android_ripple={{ color: colors.primarySoft }}>
+            <Text style={styles.ctaSecondaryText}>Download invoice</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
   );
+}
+
+function payStatusStyle(s: string) {
+  switch (s) {
+    case 'paid':
+      return { pill: { backgroundColor: '#E6F4EA' }, text: { color: '#137333' } };
+    case 'failed':
+      return { pill: { backgroundColor: '#FCE8E6' }, text: { color: '#C5221F' } };
+    case 'cod':
+      return { pill: { backgroundColor: '#FEF7E0' }, text: { color: '#8B6F00' } };
+    default:
+      return { pill: { backgroundColor: colors.surfaceAlt }, text: { color: colors.textSecondary } };
+  }
+}
+
+function buildInvoiceHTML(inv: Invoice): string {
+  const fmt = (n: number) => '₹ ' + (Number(n) || 0).toFixed(2);
+  const rows = inv.items
+    .map(
+      (it) => `
+      <tr>
+        <td>${escapeHtml(it.name)}<div class="muted">${it.unit}</div></td>
+        <td class="num">${it.quantity}</td>
+        <td class="num">${fmt(it.price)}</td>
+        <td class="num">${fmt(it.subtotal)}</td>
+      </tr>`,
+    )
+    .join('');
+  const a = inv.address || ({} as any);
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8" /><title>${escapeHtml(inv.invoice_no)}</title>
+<style>
+  *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#202020;padding:32px}
+  h1{color:#0C831F;margin:0 0 4px} .row{display:flex;justify-content:space-between;margin-bottom:24px}
+  .muted{color:#666;font-size:12px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:13px}
+  th{background:#f8f8f8;text-transform:uppercase;font-size:11px;letter-spacing:.5px}
+  .num{text-align:right;white-space:nowrap}
+  .totals{margin-top:16px;width:280px;margin-left:auto}
+  .totals .r{display:flex;justify-content:space-between;padding:4px 0}
+  .totals .grand{border-top:2px solid #202020;margin-top:8px;padding-top:8px;font-weight:700;color:#0C831F;font-size:18px}
+  .pill{display:inline-block;background:#E6F4EA;color:#137333;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700}
+</style></head>
+<body>
+  <div class="row">
+    <div>
+      <h1>Dwaarit</h1>
+      <div class="muted">Fresh groceries · 10-min delivery</div>
+    </div>
+    <div style="text-align:right">
+      <div><strong>Invoice ${escapeHtml(inv.invoice_no)}</strong></div>
+      <div class="muted">${new Date(inv.date).toLocaleString()}</div>
+      <div class="pill">${escapeHtml(inv.status.toUpperCase())}</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <div class="muted">Billed to</div>
+      <div><strong>${escapeHtml(inv.customer.name || a.full_name || '')}</strong></div>
+      <div class="muted">${escapeHtml(inv.customer.email || '')}</div>
+      <div class="muted" style="margin-top:6px">
+        ${escapeHtml(a.line1 || '')}${a.line2 ? ', ' + escapeHtml(a.line2) : ''}<br/>
+        ${escapeHtml(a.city || '')} ${escapeHtml(a.pincode || '')}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div class="muted">Payment</div>
+      <div><strong>${escapeHtml(String(inv.payment_method || '').toUpperCase())}</strong></div>
+      <div class="muted">${escapeHtml(String(inv.payment_status || ''))}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Item</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="r"><span>Subtotal</span><span>${fmt(inv.subtotal)}</span></div>
+    <div class="r"><span>Delivery fee</span><span>${inv.delivery_fee ? fmt(inv.delivery_fee) : 'FREE'}</span></div>
+    ${inv.wallet_applied ? `<div class="r"><span>Wallet applied</span><span>− ${fmt(inv.wallet_applied)}</span></div>` : ''}
+    <div class="r grand"><span>Payable</span><span>${fmt(inv.payable)}</span></div>
+  </div>
+
+  <div class="muted" style="margin-top:32px;text-align:center">Thank you for shopping with Dwaarit · This is a system-generated invoice</div>
+</body></html>`;
+}
+
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 const styles = StyleSheet.create({

@@ -17,14 +17,25 @@ import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
 import { profileApi, WalletSummary, WalletTxn } from '@/src/api/profile';
+import { paymentsApi } from '@/src/api/payments';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
+import {
+  RazorpayCheckout,
+  RazorpaySuccess,
+} from '@/src/components/RazorpayCheckout';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
 function BackArrow() {
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-      <Path d="M15 19l-7-7 7-7" stroke={colors.textPrimary} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+      <Path
+        d="M15 19l-7-7 7-7"
+        stroke={colors.textPrimary}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   );
 }
@@ -39,27 +50,41 @@ function txnMeta(t: WalletTxn): { sign: '+' | '-'; color: string; label: string 
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   } catch {
     return '';
   }
 }
 
+type RzpSession = {
+  mode: 'live' | 'mock';
+  keyId: string;
+  orderId: string;
+  amount: number; // paise
+  inrAmount: number; // INR
+};
+
 export default function WalletScreen() {
   const insets = useSafeAreaInsets();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [data, setData] = useState<WalletSummary | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupAmount, setTopupAmount] = useState('500');
   const [busy, setBusy] = useState(false);
+  const [rzp, setRzp] = useState<RzpSession | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     try {
       const res = await profileApi.walletSummary(token);
       setData(res);
-    } catch (e: any) {
+    } catch {
       setData({ balance: 0, transactions: [] });
     }
   }, [token]);
@@ -68,22 +93,58 @@ export default function WalletScreen() {
     load();
   }, [load]);
 
-  async function doTopup() {
+  async function startTopup() {
     if (!token) return;
     const amt = parseFloat(topupAmount);
-    if (!isFinite(amt) || amt <= 0) return Alert.alert('Invalid amount', 'Enter a positive amount.');
+    if (!isFinite(amt) || amt <= 0) {
+      return Alert.alert('Invalid amount', 'Enter a positive amount.');
+    }
     setBusy(true);
     try {
-      await profileApi.walletTopup(token, amt);
+      const order = await paymentsApi.createOrder(token, amt);
       setTopupOpen(false);
-      setTopupAmount('500');
-      await load();
-      Alert.alert('Wallet credited', `${formatINR(amt)} added to your wallet.`);
+      setRzp({
+        mode: order.mode,
+        keyId: order.key_id,
+        orderId: order.razorpay_order_id,
+        amount: order.amount,
+        inrAmount: amt,
+      });
     } catch (e: any) {
-      Alert.alert('Top-up failed', e?.message ?? 'Try again later.');
+      Alert.alert('Could not start payment', e?.message ?? 'Try again later.');
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onPaymentSuccess(resp: RazorpaySuccess) {
+    if (!token || !rzp) return;
+    setRzp(null);
+    try {
+      const v = await paymentsApi.verifyWalletTopup(token, {
+        razorpay_order_id: resp.razorpay_order_id,
+        razorpay_payment_id: resp.razorpay_payment_id,
+        razorpay_signature: resp.razorpay_signature,
+        amount: rzp.inrAmount,
+      });
+      setTopupAmount('500');
+      await load();
+      if (v.duplicate) {
+        Alert.alert('Already credited', 'This payment was already added to your wallet.');
+      } else {
+        Alert.alert(
+          'Wallet credited',
+          `${formatINR(rzp.inrAmount)} added. New balance: ${formatINR(v.balance)}`,
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Verification failed', e?.message ?? 'Please contact support.');
+    }
+  }
+
+  function onPaymentFailure(reason: string) {
+    setRzp(null);
+    Alert.alert('Payment failed', reason);
   }
 
   return (
@@ -98,15 +159,24 @@ export default function WalletScreen() {
 
       <FlatList
         ListHeaderComponent={
-          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.lg }}>
+          <View
+            style={{
+              paddingHorizontal: spacing.lg,
+              paddingTop: spacing.md,
+              gap: spacing.lg,
+            }}
+          >
             <View style={styles.balanceCard}>
               <Text style={styles.balanceLabel}>Available balance</Text>
-              <Text style={styles.balanceValue}>{formatINR(data?.balance ?? 0)}</Text>
+              <Text style={styles.balanceValue} testID="wallet-balance">
+                {formatINR(data?.balance ?? 0)}
+              </Text>
               <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
                 <PrimaryButton
                   title="+ Add money"
                   onPress={() => setTopupOpen(true)}
                   style={{ flex: 1 }}
+                  testID="open-topup-btn"
                 />
               </View>
             </View>
@@ -115,7 +185,9 @@ export default function WalletScreen() {
             {data && data.transactions.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptyText}>Add money to start using wallet for faster checkout.</Text>
+                <Text style={styles.emptyText}>
+                  Add money to start using wallet for faster checkout.
+                </Text>
               </View>
             ) : null}
           </View>
@@ -132,7 +204,7 @@ export default function WalletScreen() {
               </View>
               <Text style={[styles.txnAmt, { color: m.color }]}>
                 {m.sign}
-                {formatINR(item.amount).replace('₹', '₹')}
+                {formatINR(item.amount)}
               </Text>
             </View>
           );
@@ -151,22 +223,29 @@ export default function WalletScreen() {
         }
       />
 
-      <Modal visible={topupOpen} transparent animationType="fade" onRequestClose={() => setTopupOpen(false)}>
+      <Modal
+        visible={topupOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setTopupOpen(false)}
+      >
         <Pressable style={styles.modalBackdrop} onPress={() => setTopupOpen(false)}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <Text style={styles.modalTitle}>Add money to wallet</Text>
-            <Text style={styles.modalHint}>Choose amount or enter custom</Text>
+            <Text style={styles.modalHint}>Powered by Razorpay (UPI, Cards, Netbanking)</Text>
             <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-              {[200, 500, 1000].map((v) => (
+              {[200, 500, 1000, 2000].map((v) => (
                 <Pressable
                   key={v}
                   onPress={() => setTopupAmount(String(v))}
-                  style={[
-                    styles.amtChip,
-                    String(v) === topupAmount && styles.amtChipActive,
-                  ]}
+                  style={[styles.amtChip, String(v) === topupAmount && styles.amtChipActive]}
                 >
-                  <Text style={[styles.amtChipText, String(v) === topupAmount && styles.amtChipTextActive]}>
+                  <Text
+                    style={[
+                      styles.amtChipText,
+                      String(v) === topupAmount && styles.amtChipTextActive,
+                    ]}
+                  >
                     ₹{v}
                   </Text>
                 </Pressable>
@@ -179,14 +258,41 @@ export default function WalletScreen() {
               placeholder="Enter amount"
               placeholderTextColor={colors.textMuted}
               style={styles.amtInput}
+              testID="topup-amount-input"
             />
-            <PrimaryButton title={busy ? 'Processing…' : `Add ${formatINR(parseFloat(topupAmount) || 0)}`} onPress={doTopup} disabled={busy} />
-            <Pressable onPress={() => setTopupOpen(false)} style={{ alignItems: 'center', marginTop: spacing.sm }}>
+            <PrimaryButton
+              title={busy ? 'Starting…' : `Pay ${formatINR(parseFloat(topupAmount) || 0)}`}
+              onPress={startTopup}
+              disabled={busy}
+              loading={busy}
+              testID="start-topup-btn"
+            />
+            <Pressable
+              onPress={() => setTopupOpen(false)}
+              style={{ alignItems: 'center', marginTop: spacing.sm }}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
+
+      {rzp ? (
+        <RazorpayCheckout
+          visible={!!rzp}
+          onClose={() => setRzp(null)}
+          onSuccess={onPaymentSuccess}
+          onFailure={onPaymentFailure}
+          mode={rzp.mode}
+          keyId={rzp.keyId}
+          orderId={rzp.orderId}
+          amount={rzp.amount}
+          name="Dwaarit Wallet"
+          description="Wallet top-up"
+          prefill={{ name: user?.name, email: user?.email, contact: user?.mobile || '' }}
+          themeColor={colors.primary}
+        />
+      ) : null}
     </View>
   );
 }
@@ -215,9 +321,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.soft,
   },
-  balanceLabel: { ...typography.captionBold, color: colors.white, opacity: 0.85, letterSpacing: 0.5 },
+  balanceLabel: {
+    ...typography.captionBold,
+    color: colors.white,
+    opacity: 0.85,
+    letterSpacing: 0.5,
+  },
   balanceValue: { fontSize: 36, fontWeight: '800', color: colors.white, marginTop: 6 },
-  section: { ...typography.captionBold, color: colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
+  section: {
+    ...typography.captionBold,
+    color: colors.textMuted,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
   emptyBox: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: radii.md,
@@ -225,7 +341,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyTitle: { ...typography.bodyBold, color: colors.textPrimary },
-  emptyText: { ...typography.caption, color: colors.textSecondary, textAlign: 'center', marginTop: 4 },
+  emptyText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
   txnRow: {
     flexDirection: 'row',
     alignItems: 'center',

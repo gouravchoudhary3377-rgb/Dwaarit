@@ -1,0 +1,53 @@
+{
+  "summary": "Phase 3 (Wallet + Razorpay mock + Checkout) and Phase 4 (Detailed Order History + Invoice) BACKEND validation. All 19 new tests in /app/backend/tests/test_phase34_wallet_payments_invoice.py PASS. Full backend regression also passes: 50/50 across both test files. Razorpay correctly runs in mock mode (RAZORPAY_KEY_ID empty). Wallet top-up via /api/payments/razorpay/create-order + /api/wallet/razorpay/verify credits the wallet and is idempotent (duplicate=true on replay). Orders work for payment_method in {wallet, razorpay, cod} — razorpay mock flow flips payment_status to 'paid' and persists razorpay_payment_id. Invoice schema correct (invoice_no INV-*, items, subtotal, delivery_fee, wallet_applied, payable, payment_method, payment_status, address, customer) and authZ matrix is correct: owner=200, unauth=401, OTHER customer=403, admin=200. Admin cancel on a fully-wallet-paid order generates a 'refund' wallet_txn and restores balance. ONE NON-BLOCKING BUSINESS-LOGIC GAP: cancelling a partial-wallet order with payment_status='pending' (wallet_applied>0 but payable>0 still owed) does NOT issue a wallet refund because routes/orders.py only refunds when payment_status in ('paid','cod'). Also corrected a stale assertion in the older test_dwaarit_api.py (legacy test asserted total==subtotal, but Phase 3 added a ₹25 flat delivery fee for orders <₹499).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "PATCH /api/admin/orders/{id}/status (status=cancelled)",
+        "issue": "Partial-wallet orders (payment_method='wallet' + payable>0, payment_status remains 'pending') do NOT refund the wallet_applied portion on cancellation. Backend refund gate in routes/orders.py requires payment_status in ('paid','cod'). Consider always refunding wallet_applied regardless of remaining payable, or change payment_status semantics so partially-applied wallet locks count as 'paid' for the wallet portion."
+      },
+      {
+        "endpoint": "POST /api/payments/razorpay/create-order",
+        "issue": "Request body uses the route /api/payments/razorpay/create-order (per /app/backend/routes/payments.py) and NOT /api/payments/order as referenced in the review request. No code change needed — just confirming the actual contract for any future agents."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase34_wallet_payments_invoice.py",
+    "/app/test_reports/pytest/phase34_results.xml",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Product decision, non-blocking) Decide whether cancelling a partial-wallet order (payment_status='pending', wallet_applied>0) should refund the wallet_applied portion. If yes, update the refund gate in /app/backend/routes/orders.py to: `if refund_amt > 0 and (order.get('payment_status') in ('paid','cod') or float(order.get('wallet_applied',0)) > 0)` and refund only the wallet_applied portion in that case.",
+    "(Doc fix only) Update the review-request template / test_result.md so future iterations call POST /api/payments/razorpay/create-order (not /api/payments/order).",
+    "Phase 3/4 backend is GREEN — main agent can proceed with frontend (Phase 3/4) validation."
+  ],
+  "critical_code_review_comments": [
+    "routes/payments.py razorpay/verify and wallet/razorpay/verify in mock mode accept ANY signature string. This is correct for mock mode (RAZORPAY_ENABLED=false) but the live code path that calls razorpay_client.utility.verify_payment_signature when RAZORPAY_ENABLED=true should be guarded against missing fields. Verify there's a fail-fast 400 if any of razorpay_order_id/payment_id/signature is missing once real keys are added.",
+    "routes/orders.py cancellation path: 'refund_amt = payable + wallet_applied' assumes 'payable' is the post-wallet amount the user actually paid. Confirm payable is consistently stored as the post-wallet payable across all three payment_method branches (wallet/razorpay/cod). For COD orders the user has NOT actually paid yet at cancellation time — issuing a wallet refund of `payable + wallet_applied` for a 'cod' order that's still pending delivery could over-credit the customer. Suggest gating COD refunds on `order.status in ('out_for_delivery','delivered')` or just on COD being already collected.",
+    "Wallet topup idempotency is correctly implemented via a unique razorpay_payment_id check — nice. However the create-order endpoint generates a fresh order_mock_<uuid> every call, so the same client can rapidly create N orders. Not a security issue (verify is idempotent on payment_id) but consider rate-limiting /api/payments/razorpay/create-order in production."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase34_wallet_payments_invoice.py (new)",
+    "/app/backend/tests/test_dwaarit_api.py (fixed stale subtotal-vs-total assertion to account for Phase 3 delivery fee)",
+    "/app/test_result.md (added testing-agent status_history for Phase 3/4 backend tasks)",
+    "/app/test_reports/pytest/phase34_results.xml (new junit XML)",
+    "/app/test_reports/pytest/pytest_results.xml (refreshed full-suite junit XML)"
+  ],
+  "success_rate": {
+    "backend": "100% (50/50 across both test files; 19/19 on the new Phase 3+4 suite)",
+    "frontend": "not tested this run (out of scope per request)"
+  },
+  "seed_data_creation": "Used pre-seeded demo customer (demo@dwaarit.com / Demo@123) and admin (admin@dwaarit.com / Admin@123). Created one ephemeral 'TEST_other_<uuid>@dwaarit.com' customer per test session to exercise the cross-user 403 on the invoice endpoint. Three TEST orders are placed per run (one each for wallet/razorpay/cod), and one is cancelled. No production data modified.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Razorpay top-up route is POST /api/payments/razorpay/create-order with body {amount, order_id?}. Wallet verify is POST /api/wallet/razorpay/verify with {razorpay_order_id, razorpay_payment_id, razorpay_signature, amount}. Order placement uses POST /api/orders with {items:[{product_id,quantity}], address:{full_name,phone,line1,line2,city,state,pincode}, payment_method:'wallet'|'razorpay'|'cod', use_wallet:bool, notes:str}. Delivery fee is ₹25 flat when subtotal <₹499. Invoice authZ: only owner OR admin; otherwise 403/401. Admin cancellation refund gate currently requires payment_status in ('paid','cod') — partial-wallet 'pending' orders do NOT trigger refund (open product question). All tests use EXPO_PUBLIC_BACKEND_URL from /app/frontend/.env (note: variable name is EXPO_PUBLIC_BACKEND_URL, not EXPO_BACKEND_URL).",
+  "rca_of_issue": "No live bug. Stale assertion in test_dwaarit_api.py::test_customer_create_order asserted `order.total == subtotal` from before Phase 3 added a flat ₹25 delivery fee (config.DELIVERY_FEE_FLAT=25.0, threshold=₹499 in routes/orders.py:_compute_totals). Updated the test to compute expected_delivery dynamically and assert subtotal/delivery_fee/total separately — this also asserts that the new Phase 3 delivery_fee field is present and correct in /api/orders responses, which is desirable regression coverage."
+}
