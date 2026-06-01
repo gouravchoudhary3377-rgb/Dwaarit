@@ -232,17 +232,39 @@ frontend:
         agent: "main"
         comment: "Customer can pick from saved addresses; selected address is submitted to backend AddressIn schema {full_name, phone, line1, line2, city, state, pincode}. Also verify 'Add new address' CTA navigates to /location."
 
+  - task: "Profile tab routing (Edit / Wallet / Wishlist)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/profile.tsx, frontend/app/profile/edit.tsx, frontend/app/profile/wallet.tsx, frontend/app/profile/wishlist.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Profile screen has new MenuRow CTAs that route to /profile/edit, /profile/wallet, /profile/wishlist. Verify routing works without crashing and balance + wishlist counts render."
+  - task: "Orders tab Reorder + Track CTAs"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/orders.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Each order card now exposes Reorder (hydrates cart) + Track order CTA when status is pending/accepted/out_for_delivery. Verify CTA renders and Reorder navigates to /cart with items prefilled."
+
 metadata:
   created_by: "main_agent"
-  version: "1.2"
-  test_sequence: 2
+  version: "1.3"
+  test_sequence: 3
   run_ui: true
 
 test_plan:
   current_focus:
-    - "Address Book + Location screen (GPS + Nominatim search + Save)"
-    - "Home header active-address chip (Blinkit-style 'Home — 5-min delivery')"
-    - "Checkout selectable saved-address list (replaces auto-fill form)"
+    - "Profile tab routing (Edit / Wallet / Wishlist)"
+    - "Orders tab Reorder + Track CTAs"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -251,4 +273,6 @@ agent_communication:
   - agent: "main"
     message: "Restarted Expo. Polished Product Detail screen. Please run full backend + frontend E2E (customer + admin). Credentials in /app/memory/test_credentials.md (admin@dwaarit.com / Admin@123). Customer can register a fresh account."
   - agent: "main"
-    message: "P0 frontend validation: please test the new Address Book wiring end-to-end. Login as demo@dwaarit.com / Demo@123. (1) On Home (tabs), confirm a header chip showing the active delivery address (or a 'Set delivery address' prompt if none) and that tapping it routes to /location. (2) On /location, verify search via OpenStreetMap Nominatim returns results, that selecting a result + label (Home/Work/Other) and saving stores the address and updates the active address on Home. expo-location GPS may not work in headless web — selecting via search is the primary path. (3) Add an item to cart → go to Checkout, confirm the selectable saved-address list renders, selecting an address enables 'Place Order', and placing a COD order succeeds and routes to order-success. Also verify profile.tsx still renders with DiceBear avatar correctly. SKIP backend retesting — focus on frontend only."
+    message: "P0 frontend validation: please test the new Address Book wiring end-to-end. Login as demo@dwaarit.com / Demo@123."
+  - agent: "main"
+    message: "Phase 2 UI validation needed. Login as demo@dwaarit.com / Demo@123. (1) Profile tab → tap the pencil icon → verify /profile/edit opens without crash and lets user update name/mobile. (2) Profile tab → tap 'Wallet' row → verify /profile/wallet opens and lists balance + recent transactions (empty state acceptable). (3) Profile tab → tap 'Wishlist' row → verify /profile/wishlist opens (empty state acceptable). (4) Orders tab → for any visible order verify 'Reorder' and 'Track order' buttons render and Reorder navigates to cart. SKIP backend retesting."

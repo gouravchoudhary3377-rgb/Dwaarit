@@ -1,0 +1,34 @@
+{
+  "summary": "Frontend-only validation of Phase 2 Profile + Orders UI wiring (per E1 request, backend skipped). 9/9 review checks PASS after one minor fix. CRITICAL BUG FOUND AND FIXED by testing agent: /app/frontend/app/profile/wishlist.tsx was importing `useCartStore` from '@/src/store/cartStore' and calling `useCartStore((s)=>s.add)`, but the store only exports `useCart`. This caused a hard runtime crash 'TypeError: (0 , _srcStoreCartStore.useCartStore) is not a function' the instant the Wishlist screen mounted (red-screen error overlay, screen unusable). Renamed both the import and the call site to `useCart`, restarted expo, and re-verified — Wishlist now renders the proper empty state ('My Wishlist' header, heart icon, 'Your wishlist is empty', 'Browse products' button). All other flows already worked on first try: login (demo@dwaarit.com/Demo@123 -> /home), profile pencil -> /profile/edit (Full Name/Email/Mobile Number/Save Changes form), Wallet row -> /profile/wallet (₹0 balance + empty transactions + Add money), Saved Addresses -> /location, My Orders -> /orders, Reorder hydrates cart and navigates to /cart with the order items added, order card tap -> /order/{id}. 'Track order' button is correctly hidden because all seeded demo orders are status=Delivered or Cancelled (conditional render works as designed). Non-blocking warnings: 'props.pointerEvents is deprecated' (from react-native-web internals, same as iteration_7) and 'useSoundPlayer init failed ReferenceError: Audio is not defined' (expo-audio not supported on web; harmless because it's caught and the app keeps working).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Reorder -> cart hydration", "issue": "Backend returned 404 for one stale product id (prod_c05956b7e22c) during the Reorder flow. The frontend handled it gracefully and still hydrated the surviving products, but for old orders whose products have since been deleted the user silently gets fewer items than the original order. Consider showing a toast like 'X items unavailable' when reorder partially fails.", "affected_testIDs": ["orders-reorder-btn"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "react-native-web", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents.' Emitted on every screen mount (carried over from iteration_7). Non-blocking. Reference: visible on /home, /profile, /orders."},
+      {"component": "expo-audio (web)", "issue": "Runtime warning at app boot: 'useSoundPlayer init failed ReferenceError: Audio is not defined' from /app/frontend/src/hooks/useSoundPlayer.ts:43 (called by /app/frontend/src/hooks/useCustomerOrderAlerts.ts:20 inside (tabs)/_layout.tsx:26). expo-audio's web AudioPlayer requires a browser Audio global that does not exist during SSR/initial bundle. Add a Platform.OS === 'web' guard or a try/catch wrapper to silence this on web preview."}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_8.json"],
+  "action_items": [
+    "(Already fixed by testing agent, please review) /app/frontend/app/profile/wishlist.tsx lines 19 + 42: renamed `useCartStore` -> `useCart` so the import matches the actual export in /app/frontend/src/store/cartStore.ts.",
+    "(Optional polish) Handle the partial-reorder case when a product in a historical order has been deleted from the catalog (currently a silent 404 in dev logs).",
+    "(Optional polish) Guard `useSoundPlayer` against the missing web Audio global to remove the noisy boot warning.",
+    "(Carried over from iteration_7) Track down `props.pointerEvents is deprecated` and migrate to `style.pointerEvents`."
+  ],
+  "critical_code_review_comments": [
+    "wishlist.tsx `moveToCart` builds a partial Product literal (only product_id/name/image_url/unit/price) and passes it to the cart store. The cart store's `add(product: Product, qty?)` typing expects the full Product (it also needs `stock`, `category`, `description`). Today it does not crash because nothing in the cart screen dereferences the missing fields, but if the cart UI ever reads e.g. line.product.stock it will read undefined. Recommend: fetch the full product before adding, or relax the cart Product type / store only the fields actually needed.",
+    "Same wishlist.tsx `moveToCart` calls `removeFromWishlist` after addToCart without awaiting — small race, but OK for now since addToCart is sync.",
+    "orders.tsx 'Track order' is conditionally rendered only for statuses pending/accepted/out_for_delivery — verified correct. With the demo seed, all orders are Delivered or Cancelled, which is why the button doesn't show. E1 should add a fresh in-flight order to the seed if they want this surfaced in screenshots."
+  ],
+  "updated_files": ["/app/frontend/app/profile/wishlist.tsx"],
+  "success_rate": {"backend": "not retested (per request)", "frontend": "100% (9/9 review checks pass after the wishlist import fix)"},
+  "seed_data_creation": "None. Used existing demo customer demo@dwaarit.com / Demo@123 and the pre-seeded order history.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Profile sub-routes live under /app/frontend/app/profile/ and use the (tabs)/profile entry tab. Direct deep-linking via page.goto('http://localhost:3000/profile/wallet') works fine. Login route is /login (not /(auth)/login in the URL — Expo Router strips the group). The cart store is named `useCart` (NOT `useCartStore`) — verify any new screen using cart imports the correct name. Demo orders are all completed states, so to test 'Track order' visibility the main agent will need to seed an order with status in {pending, accepted, out_for_delivery}.",
+  "rca_of_issue": "BUG: Wishlist screen crashed with 'TypeError: (0 , _srcStoreCartStore.useCartStore) is not a function'. RCA: /app/frontend/src/store/cartStore.ts exports the zustand hook as `useCart` (line 28: `export const useCart = create<CartState>(...)`). The Wishlist screen at /app/frontend/app/profile/wishlist.tsx was authored against an assumed name `useCartStore` — both the import (line 19) and the call site (line 42) referenced this non-existent export, so ESM resolution returned undefined and React threw on the very first render of Wishlist. Reproduction: log in as demo@dwaarit.com, open /profile/wishlist (or tap the Wishlist row on the Profile tab) -> red-screen error overlay. Mitigation applied by testing agent: search-replace `useCartStore` -> `useCart` in both lines of wishlist.tsx, then `sudo supervisorctl restart expo` to flush metro's stale module graph (HMR alone served the cached failing bundle). After restart, Wishlist renders correctly with the empty-state UI."
+}

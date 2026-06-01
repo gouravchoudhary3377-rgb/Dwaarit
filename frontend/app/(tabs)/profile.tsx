@@ -7,7 +7,9 @@ import Svg, { Path, Circle } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
 import { api, Order } from '@/src/api/client';
+import { profileApi } from '@/src/api/profile';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 const APP_VERSION = '1.0.0';
 
@@ -190,6 +192,8 @@ export default function Profile() {
   const insets = useSafeAreaInsets();
   const { user, token, signOut } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [wishlistCount, setWishlistCount] = useState<number>(0);
 
   const avatarUri = useMemo(() => {
     if (user?.picture) return user.picture;
@@ -199,6 +203,14 @@ export default function Profile() {
   useEffect(() => {
     if (!token) return;
     api.get<Order[]>('/orders', token).then(setOrders).catch(() => setOrders([]));
+    profileApi
+      .walletSummary(token)
+      .then((w) => setWalletBalance(w.balance || 0))
+      .catch(() => setWalletBalance(0));
+    profileApi
+      .wishlist(token)
+      .then((items) => setWishlistCount(items?.length || 0))
+      .catch(() => setWishlistCount(0));
   }, [token]);
 
   const stats = useMemo(() => {
@@ -270,9 +282,10 @@ export default function Profile() {
             </View>
           </View>
           <Pressable
-            onPress={() => notReady('Edit profile')}
+            onPress={() => router.push('/profile/edit')}
             style={styles.editBtn}
             hitSlop={8}
+            accessibilityLabel="Edit profile"
           >
             {IC.pencil(colors.primary)}
           </Pressable>
@@ -282,9 +295,9 @@ export default function Profile() {
         <View style={styles.statsCard}>
           <StatBox label="Orders" value={String(stats.orders)} />
           <View style={styles.statDivider} />
-          <StatBox label="Total spent" value={`$${stats.spent.toFixed(0)}`} />
+          <StatBox label="Total spent" value={formatINR(stats.spent)} />
           <View style={styles.statDivider} />
-          <StatBox label="Wallet" value="$0" />
+          <StatBox label="Wallet" value={formatINR(walletBalance)} />
         </View>
 
         {/* Your Information */}
@@ -310,13 +323,21 @@ export default function Profile() {
             iconBg="#E8EAF6"
             iconColor="#5C6BC0"
             label="Wallet"
-            hint="$0.00 available"
-            onPress={() => notReady('Wallet')}
+            hint={`${formatINR(walletBalance)} available`}
+            onPress={() => router.push('/profile/wallet')}
           />
           <MenuRow
             icon={IC.gift('#D81B60')}
             iconBg="#FCE4EC"
             iconColor="#D81B60"
+            label="Wishlist"
+            hint={wishlistCount ? `${wishlistCount} item${wishlistCount === 1 ? '' : 's'} saved` : 'No items yet'}
+            onPress={() => router.push('/profile/wishlist')}
+          />
+          <MenuRow
+            icon={IC.gift('#EF6C00')}
+            iconBg="#FFF3E0"
+            iconColor="#EF6C00"
             label="Refer & Earn"
             hint="Invite friends, get rewards"
             onPress={() => notReady('Refer & Earn')}

@@ -6,6 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 function Check() {
   return (
@@ -33,7 +34,7 @@ export default function OrderSuccess() {
         </View>
         <View style={styles.row}>
           <Text style={styles.k}>Total</Text>
-          <Text style={styles.v}>${Number(total ?? 0).toFixed(2)}</Text>
+          <Text style={styles.v}>{formatINR(Number(total ?? 0))}</Text>
         </View>
         <View style={styles.row}>
           <Text style={styles.k}>Payment</Text>

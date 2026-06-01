@@ -51,6 +51,8 @@ export const api = {
   get: <T>(path: string, token?: string | null) => request<T>(path, { token }),
   post: <T>(path: string, body?: any, token?: string | null) =>
     request<T>(path, { method: 'POST', body, token }),
+  put: <T>(path: string, body?: any, token?: string | null) =>
+    request<T>(path, { method: 'PUT', body, token }),
   patch: <T>(path: string, body?: any, token?: string | null) =>
     request<T>(path, { method: 'PATCH', body, token }),
   del: <T>(path: string, token?: string | null) =>
@@ -64,7 +66,43 @@ export type AuthUser = {
   role: 'customer' | 'admin';
   auth_provider: 'password' | 'google';
   picture?: string | null;
+  mobile?: string | null;
+  mobile_verified?: boolean;
 };
+
+export type SavedAddressApi = {
+  address_id: string;
+  user_id: string;
+  label: 'home' | 'work' | 'other';
+  full_name: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  landmark: string;
+  city: string;
+  pincode: string;
+  state: string;
+  lat?: number | null;
+  lng?: number | null;
+  is_default: boolean;
+  created_at: string;
+};
+
+export type WalletTxn = {
+  txn_id: string;
+  user_id: string;
+  type: 'credit' | 'debit' | 'refund' | 'topup';
+  amount: number;
+  note: string;
+  created_at: string;
+};
+
+export type WalletSummary = {
+  balance: number;
+  transactions: WalletTxn[];
+};
+
+export type WishlistProduct = Product & { added_at: string };
 
 export type AuthResponse = { token: string; user: AuthUser };
 

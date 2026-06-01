@@ -1,17 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
-import { api, Order } from '@/src/api/client';
+import { api, Order, Product } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import { useCart } from '@/src/store/cartStore';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
+
+const TRACKABLE: Order['status'][] = ['pending', 'accepted', 'out_for_delivery'];
 
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const cartAdd = useCart((s) => s.add);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,6 +35,31 @@ export default function OrdersScreen() {
 
   useEffect(() => { load(); }, [load]);
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const reorder = useCallback(async (order: Order) => {
+    // Hydrate cart from order items by fetching live product info per item.
+    try {
+      let added = 0;
+      for (const it of order.items) {
+        try {
+          const p = await api.get<Product>(`/products/${it.product_id}`);
+          if (p && (p.stock ?? 0) > 0) {
+            cartAdd(p, Math.min(it.quantity, p.stock));
+            added += 1;
+          }
+        } catch {
+          // Skip products that no longer exist
+        }
+      }
+      if (added === 0) {
+        Alert.alert('Reorder', 'None of these items are available right now.');
+        return;
+      }
+      router.push('/(tabs)/cart');
+    } catch (e) {
+      Alert.alert('Reorder failed', 'Please try again.');
+    }
+  }, [cartAdd]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
@@ -78,9 +107,30 @@ export default function OrdersScreen() {
                 <Text style={styles.payment}>{item.payment_method === 'cod' ? 'Cash on Delivery' : 'Card'}</Text>
                 <Text style={styles.total}>{formatINR(item.total)}</Text>
               </View>
-              <View style={styles.viewHint}>
-                <Text style={styles.viewHintText}>View details</Text>
-                <Text style={styles.viewHintArrow}>›</Text>
+              <View style={styles.actionsRow}>
+                <Pressable
+                  onPress={(e) => { e.stopPropagation?.(); reorder(item); }}
+                  style={({ pressed }) => [styles.actionBtn, styles.actionGhost, pressed && { opacity: 0.7 }]}
+                  hitSlop={6}
+                  accessibilityLabel={`Reorder ${item.order_id.slice(-6)}`}
+                >
+                  <Text style={styles.actionGhostText}>↻  Reorder</Text>
+                </Pressable>
+                {TRACKABLE.includes(item.status) ? (
+                  <Pressable
+                    onPress={(e) => { e.stopPropagation?.(); router.push(`/order/${item.order_id}`); }}
+                    style={({ pressed }) => [styles.actionBtn, styles.actionPrimary, pressed && { opacity: 0.85 }]}
+                    hitSlop={6}
+                    accessibilityLabel={`Track order ${item.order_id.slice(-6)}`}
+                  >
+                    <Text style={styles.actionPrimaryText}>Track order</Text>
+                  </Pressable>
+                ) : (
+                  <View style={styles.viewHint}>
+                    <Text style={styles.viewHintText}>View details</Text>
+                    <Text style={styles.viewHintArrow}>›</Text>
+                  </View>
+                )}
               </View>
             </Pressable>
           )}
@@ -119,4 +169,29 @@ const styles = StyleSheet.create({
   },
   viewHintText: { ...typography.captionBold, color: colors.primary },
   viewHintArrow: { ...typography.bodyBold, color: colors.primary, marginTop: -2 },
+  actionsRow: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  actionGhost: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  actionGhostText: { ...typography.captionBold, color: colors.primary },
+  actionPrimary: { backgroundColor: colors.primary },
+  actionPrimaryText: { ...typography.captionBold, color: colors.white },
 });
