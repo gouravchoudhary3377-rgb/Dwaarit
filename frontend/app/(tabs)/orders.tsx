@@ -7,8 +7,7 @@ import { api, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge } from '@/src/components/StatusBadge';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
-
-export default function Orders() {
+import { formatINR } from '@/src/utils/format';
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -75,7 +74,7 @@ export default function Orders() {
               </View>
               <View style={styles.cardFoot}>
                 <Text style={styles.payment}>{item.payment_method === 'cod' ? 'Cash on Delivery' : 'Card'}</Text>
-                <Text style={styles.total}>${item.total.toFixed(2)}</Text>
+                <Text style={styles.total}>{formatINR(item.total)}</Text>
               </View>
               <View style={styles.viewHint}>
                 <Text style={styles.viewHintText}>View details</Text>

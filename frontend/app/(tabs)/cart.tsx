@@ -79,7 +79,7 @@ export default function Cart() {
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryVal}>${total.toFixed(2)}</Text>
+              <Text style={styles.summaryVal}>{formatINR(total)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Delivery</Text>
@@ -87,7 +87,7 @@ export default function Cart() {
             </View>
             <View style={[styles.summaryRow, { marginTop: 4 }]}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalVal}>${total.toFixed(2)}</Text>
+              <Text style={styles.totalVal}>{formatINR(total)}</Text>
             </View>
             <PrimaryButton
               title="Proceed to checkout"

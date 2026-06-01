@@ -23,6 +23,7 @@ import {
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { TextField } from '@/src/components/ui/TextField';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 function BackArrow() {
   return (
@@ -267,7 +268,7 @@ export default function Checkout() {
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalVal}>₹{total.toFixed(2)}</Text>
+          <Text style={styles.totalVal}>{formatINR(total)}</Text>
         </View>
         <PrimaryButton
           title={placing ? 'Placing...' : 'Place order'}
