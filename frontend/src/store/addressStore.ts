@@ -1,137 +1,109 @@
-// Address book + current delivery address. Persisted to AsyncStorage.
+// Address book + current delivery address. Persisted via AsyncStorage helper.
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage } from '@/src/utils/storage';
 
-import type { GeocodedAddress } from '@/src/utils/location';
+const ADDR_KEY = 'dwaarit.addresses.v1';
+const ACTIVE_KEY = 'dwaarit.address.active.v1';
 
 export type AddressLabel = 'Home' | 'Work' | 'Other';
 
 export type SavedAddress = {
   id: string;
   label: AddressLabel;
-  full_name?: string;
-  phone?: string;
+  custom_label?: string; // Used when label === 'Other'
+  full_name: string;
+  phone: string;
   line1: string;
-  line2?: string;
-  city?: string;
-  state?: string;
-  pincode?: string;
-  country?: string;
-  short: string;
-  full: string;
-  coords?: { latitude: number; longitude: number };
-  created_at: number;
+  line2: string;
+  city: string;
+  pincode: string;
+  lat?: number;
+  lng?: number;
+  display_name?: string;
 };
 
-const STORAGE_KEY = 'dwaarit.addressBook.v1';
-
-type Persisted = {
-  currentId: string | null;
-  current: SavedAddress | null; // can also be a non-saved (auto-detected) address
-  saved: SavedAddress[];
-};
-
-type AddressState = Persisted & {
+type AddressState = {
+  addresses: SavedAddress[];
+  activeId: string | null;
   hydrated: boolean;
   hydrate: () => Promise<void>;
-  setCurrentFromGeocoded: (g: GeocodedAddress) => SavedAddress;
-  selectSaved: (id: string) => void;
-  upsertAddress: (input: Omit<SavedAddress, 'id' | 'created_at'> & { id?: string }) => SavedAddress;
-  removeAddress: (id: string) => void;
+  upsert: (address: SavedAddress) => void;
+  remove: (id: string) => void;
+  setActive: (id: string) => void;
+  getActive: () => SavedAddress | null;
   clear: () => void;
 };
 
-function genId() {
-  return 'addr_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+async function persist(addresses: SavedAddress[], activeId: string | null) {
+  await Promise.all([
+    storage.setItem(ADDR_KEY, JSON.stringify(addresses)),
+    storage.setItem(ACTIVE_KEY, activeId ?? ''),
+  ]);
 }
 
-async function persist(state: Persisted) {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {}
+export function makeAddressId(): string {
+  return `addr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function displayLabel(addr: SavedAddress): string {
+  if (addr.label === 'Other' && addr.custom_label) return addr.custom_label;
+  return addr.label;
+}
+
+export function shortAddress(addr: SavedAddress): string {
+  const parts = [addr.line1, addr.line2, addr.city].filter(Boolean);
+  return parts.join(', ');
 }
 
 export const useAddressStore = create<AddressState>((set, get) => ({
-  currentId: null,
-  current: null,
-  saved: [],
+  addresses: [],
+  activeId: null,
   hydrated: false,
-
   hydrate: async () => {
+    const [raw, activeRaw] = await Promise.all([
+      storage.getItem<string>(ADDR_KEY, ''),
+      storage.getItem<string>(ACTIVE_KEY, ''),
+    ]);
+    let list: SavedAddress[] = [];
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed: Persisted = JSON.parse(raw);
-        set({
-          currentId: parsed.currentId ?? null,
-          current: parsed.current ?? null,
-          saved: Array.isArray(parsed.saved) ? parsed.saved : [],
-          hydrated: true,
-        });
-        return;
-      }
-    } catch {}
-    set({ hydrated: true });
-  },
-
-  setCurrentFromGeocoded: (g) => {
-    const addr: SavedAddress = {
-      id: 'current_' + Date.now().toString(36),
-      label: 'Other',
-      line1: g.line1 || g.full.split(',')[0] || '',
-      line2: g.line2,
-      city: g.city,
-      state: g.state,
-      pincode: g.postcode,
-      country: g.country,
-      short: g.short,
-      full: g.full,
-      coords: g.coords,
-      created_at: Date.now(),
-    };
-    set({ current: addr, currentId: null });
-    persist({ currentId: null, current: addr, saved: get().saved });
-    return addr;
-  },
-
-  selectSaved: (id) => {
-    const found = get().saved.find((s) => s.id === id);
-    if (!found) return;
-    set({ current: found, currentId: id });
-    persist({ currentId: id, current: found, saved: get().saved });
-  },
-
-  upsertAddress: (input) => {
-    const existing = input.id ? get().saved.find((s) => s.id === input.id) : null;
-    const next: SavedAddress = existing
-      ? { ...existing, ...input, id: existing.id }
-      : {
-          id: genId(),
-          created_at: Date.now(),
-          ...input,
-        } as SavedAddress;
-    const saved = existing
-      ? get().saved.map((s) => (s.id === next.id ? next : s))
-      : [next, ...get().saved];
-    set({ saved, current: next, currentId: next.id });
-    persist({ currentId: next.id, current: next, saved });
-    return next;
-  },
-
-  removeAddress: (id) => {
-    const saved = get().saved.filter((s) => s.id !== id);
-    let current = get().current;
-    let currentId = get().currentId;
-    if (currentId === id) {
-      current = saved[0] ?? null;
-      currentId = saved[0]?.id ?? null;
+      list = raw ? (JSON.parse(raw) as SavedAddress[]) : [];
+    } catch {
+      list = [];
     }
-    set({ saved, current, currentId });
-    persist({ currentId, current, saved });
+    const activeId =
+      activeRaw && list.some((a) => a.id === activeRaw)
+        ? activeRaw
+        : list[0]?.id ?? null;
+    set({ addresses: list, activeId, hydrated: true });
   },
-
+  upsert: (addr) => {
+    const list = [...get().addresses];
+    const idx = list.findIndex((a) => a.id === addr.id);
+    if (idx >= 0) list[idx] = addr;
+    else list.unshift(addr);
+    const activeId = get().activeId ?? addr.id;
+    set({ addresses: list, activeId });
+    persist(list, activeId);
+  },
+  remove: (id) => {
+    const list = get().addresses.filter((a) => a.id !== id);
+    let activeId = get().activeId;
+    if (activeId === id) activeId = list[0]?.id ?? null;
+    set({ addresses: list, activeId });
+    persist(list, activeId);
+  },
+  setActive: (id) => {
+    if (!get().addresses.some((a) => a.id === id)) return;
+    set({ activeId: id });
+    persist(get().addresses, id);
+  },
+  getActive: () => {
+    const { addresses, activeId } = get();
+    if (!activeId) return null;
+    return addresses.find((a) => a.id === activeId) ?? null;
+  },
   clear: () => {
-    set({ saved: [], current: null, currentId: null });
-    persist({ saved: [], current: null, currentId: null });
+    set({ addresses: [], activeId: null });
+    persist([], null);
   },
 }));
