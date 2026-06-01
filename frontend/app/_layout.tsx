@@ -8,17 +8,20 @@ import { StatusBar } from 'expo-status-bar';
 import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useCart } from '@/src/store/cartStore';
+import { useAddressStore } from '@/src/store/addressStore';
 import { colors } from '@/src/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
-  const hydrate = useCart((s) => s.hydrate);
+  const hydrateCart = useCart((s) => s.hydrate);
+  const hydrateAddresses = useAddressStore((s) => s.hydrate);
 
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    hydrateCart();
+    hydrateAddresses();
+  }, [hydrateCart, hydrateAddresses]);
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();

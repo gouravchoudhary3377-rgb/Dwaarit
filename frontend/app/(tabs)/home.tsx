@@ -20,6 +20,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { ProductCard } from '@/src/components/ProductCard';
 import { CartIcon } from '@/src/components/icons/TabIcons';
 import { useCart } from '@/src/store/cartStore';
+import { displayLabel, shortAddress, useAddressStore } from '@/src/store/addressStore';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 
 /* ---------- Small inline icons ---------- */
@@ -78,6 +79,9 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { user, token } = useAuth();
   const cartCount = useCart((s) => s.lines.reduce((a, b) => a + b.quantity, 0));
+  const activeAddress = useAddressStore((s) =>
+    s.activeId ? s.addresses.find((a) => a.id === s.activeId) ?? null : null,
+  );
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
