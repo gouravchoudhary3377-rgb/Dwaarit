@@ -79,6 +79,15 @@ export type Product = {
   stock: number;
 };
 
+export type Category = {
+  slug: string;
+  name: string;
+  icon: string;
+  gallery: string[];
+  is_default: boolean;
+  created_at?: string;
+};
+
 export type OrderItem = {
   product_id: string;
   name: string;

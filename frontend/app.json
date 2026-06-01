@@ -11,7 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Detect your address for fast delivery."
+        "NSLocationWhenInUseUsageDescription": "Detect your address for fast delivery.",
+        "NSCameraUsageDescription": "Capture product photos for your store.",
+        "NSPhotoLibraryUsageDescription": "Pick product photos from your library.",
+        "NSPhotoLibraryAddUsageDescription": "Save captured product photos to your library."
       }
     },
     "android": {
@@ -22,7 +25,9 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
