@@ -36,6 +36,12 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
+  function landingForRole(role?: string) {
+    if (role === 'admin' || role === 'super_admin' || role === 'store_manager') return '/admin/orders';
+    if (role === 'rider') return '/rider/dashboard';
+    return '/(tabs)/home';
+  }
+
   async function onSubmit() {
     setErr(null);
     if (!email || !password) {
@@ -45,7 +51,7 @@ export default function Login() {
     setLoading(true);
     try {
       const u = await signIn(email.trim(), password);
-      router.replace(u.role === 'admin' ? '/admin/orders' : '/(tabs)/home');
+      router.replace(landingForRole(u?.role) as any);
     } catch (e: any) {
       setErr(e?.message ?? 'Login failed');
     } finally {
@@ -58,7 +64,7 @@ export default function Login() {
     setGLoading(true);
     try {
       const u = await signInWithGoogle();
-      if (u) router.replace((u.role === 'admin' || u.role === 'super_admin' || u.role === 'store_manager') ? '/admin/orders' : '/(tabs)/home');
+      if (u) router.replace(landingForRole(u.role) as any);
     } catch (e: any) {
       setErr(e?.message ?? 'Google sign-in failed');
     } finally {
