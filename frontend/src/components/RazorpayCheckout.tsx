@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { colors, radii, spacing, typography } from '@/src/theme';
+
+function randomId(prefix: string): string {
+  return prefix + Math.random().toString(36).slice(2, 14);
+}
 
 export type RazorpaySuccess = {
   razorpay_order_id: string;
@@ -140,22 +144,118 @@ export function RazorpayCheckout(props: Props) {
           <Text style={styles.closeText}>Close</Text>
         </Pressable>
       </View>
-      <WebView
-        originWhitelist={['*']}
-        source={{ html, baseUrl: 'https://checkout.razorpay.com' }}
-        onMessage={onMessage}
-        javaScriptEnabled
-        domStorageEnabled
-        startInLoadingState
-        renderLoading={() => (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading payment…</Text>
+      {Platform.OS === 'web' ? (
+        <WebFallbackPayPanel
+          mode={mode}
+          orderId={props.orderId}
+          amount={props.amount}
+          currency={props.currency || 'INR'}
+          name={props.name || 'Dwaarit'}
+          description={props.description || 'Order payment'}
+          onSuccess={onSuccess}
+          onFailure={onFailure}
+          onClose={onClose}
+        />
+      ) : (
+        <WebView
+          originWhitelist={['*']}
+          source={{ html, baseUrl: 'https://checkout.razorpay.com' }}
+          onMessage={onMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          renderLoading={() => (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Loading payment…</Text>
+            </View>
+          )}
+          style={{ flex: 1, backgroundColor: colors.background }}
+        />
+      )}
+    </Modal>
+  );
+}
+
+// Web fallback — react-native-webview has no web implementation, so we render a
+// pure-RN mock checkout panel that calls the same onSuccess/onFailure callbacks.
+function WebFallbackPayPanel({
+  mode,
+  orderId,
+  amount,
+  currency,
+  name,
+  description,
+  onSuccess,
+  onFailure,
+  onClose,
+}: {
+  mode: 'live' | 'mock';
+  orderId: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  onSuccess: (d: RazorpaySuccess) => void;
+  onFailure: (reason: string) => void;
+  onClose: () => void;
+}) {
+  const isMock = mode === 'mock';
+  return (
+    <ScrollView contentContainerStyle={styles.webWrap} style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={styles.webCard}>
+        <Text style={styles.webTitle}>{name}</Text>
+        <Text style={styles.webSubtitle}>{description}</Text>
+        {isMock ? (
+          <View style={styles.webPill} testID="rzp-mock-pill">
+            <Text style={styles.webPillText}>TEST / MOCK MODE</Text>
+          </View>
+        ) : (
+          <View style={[styles.webPill, { backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.webPillText, { color: colors.primary }]}>WEB PREVIEW · simulator</Text>
           </View>
         )}
-        style={{ flex: 1, backgroundColor: colors.background }}
-      />
-    </Modal>
+        <View style={styles.webDivider} />
+        <View style={styles.webRow}><Text style={styles.webRowKey}>Order</Text><Text style={styles.webRowVal} numberOfLines={1}>{orderId}</Text></View>
+        <View style={styles.webRow}><Text style={styles.webRowKey}>Amount</Text><Text style={styles.webRowVal}>₹{(amount / 100).toFixed(2)}</Text></View>
+        <View style={styles.webRow}><Text style={styles.webRowKey}>Currency</Text><Text style={styles.webRowVal}>{currency}</Text></View>
+
+        <Pressable
+          testID="rzp-mock-success"
+          accessibilityLabel="Simulate successful payment"
+          onPress={() =>
+            onSuccess({
+              razorpay_order_id: orderId,
+              razorpay_payment_id: randomId('pay_mock_'),
+              razorpay_signature: randomId('sig_mock_'),
+            })
+          }
+          style={({ pressed }) => [styles.webBtnPay, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.webBtnPayText}>Simulate success · Pay ₹{(amount / 100).toFixed(2)}</Text>
+        </Pressable>
+
+        <Pressable
+          testID="rzp-mock-failure"
+          accessibilityLabel="Simulate failed payment"
+          onPress={() => onFailure('Simulated failure on web preview')}
+          style={({ pressed }) => [styles.webBtnFail, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={styles.webBtnFailText}>Simulate failure</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityLabel="Cancel payment"
+          onPress={onClose}
+          style={({ pressed }) => [styles.webBtnCancel, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={styles.webBtnCancelText}>Cancel</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.webHelpText}>
+        This panel is shown only on web preview. On Android & iOS, the real (or mock) Razorpay sheet opens in a WebView.
+      </Text>
+    </ScrollView>
   );
 }
 

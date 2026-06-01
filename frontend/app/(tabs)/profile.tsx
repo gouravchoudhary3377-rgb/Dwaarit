@@ -353,8 +353,40 @@ export default function Profile() {
               iconBg={colors.primarySoft}
               iconColor={colors.primary}
               label="Admin Dashboard"
-              hint="Manage products and orders"
+              hint="KPIs, revenue & top products"
+              onPress={() => router.push('/admin/dashboard')}
+            />
+            <MenuRow
+              icon={IC.bag(colors.primary)}
+              iconBg={colors.primarySoft}
+              iconColor={colors.primary}
+              label="Manage Orders"
+              hint="Update status & track fulfilment"
               onPress={() => router.push('/admin/orders')}
+            />
+            <MenuRow
+              icon={IC.help('#00838F')}
+              iconBg="#E0F7FA"
+              iconColor="#00838F"
+              label="Support Tickets"
+              hint="Respond to customer queries"
+              onPress={() => router.push('/admin/tickets')}
+            />
+            <MenuRow
+              icon={IC.shield('#6A1B9A')}
+              iconBg="#F3E5F5"
+              iconColor="#6A1B9A"
+              label="Users"
+              hint="View & manage user accounts"
+              onPress={() => router.push('/admin/users')}
+            />
+            <MenuRow
+              icon={IC.wallet('#5C6BC0')}
+              iconBg="#E8EAF6"
+              iconColor="#5C6BC0"
+              label="Wallet Adjustments"
+              hint="Credit/debit user wallets"
+              onPress={() => router.push('/admin/wallet-adjustments')}
               isLast
             />
           </Section>
@@ -367,8 +399,8 @@ export default function Profile() {
             iconBg="#E0F7FA"
             iconColor="#00838F"
             label="Help & Support"
-            hint="We're here to help"
-            onPress={() => notReady('Help & Support')}
+            hint="Chat with our AI assistant"
+            onPress={() => router.push('/support')}
           />
           <MenuRow
             icon={IC.info('#455A64')}

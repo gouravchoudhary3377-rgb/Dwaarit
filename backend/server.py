@@ -12,6 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from database import client, ensure_indexes
 from routes.addresses import router as addresses_router
+from routes.admin import router as admin_router
 from routes.auth import router as auth_router
 from routes.categories import router as categories_router
 from routes.orders import router as orders_router
@@ -33,6 +34,7 @@ api = APIRouter(prefix="/api")
 
 # mount feature routers
 api.include_router(auth_router)
+api.include_router(admin_router)
 api.include_router(products_router)
 api.include_router(categories_router)
 api.include_router(orders_router)

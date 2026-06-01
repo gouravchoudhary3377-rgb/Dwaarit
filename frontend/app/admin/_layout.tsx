@@ -18,6 +18,33 @@ function BoxesIcon({ color }: { color: string }) {
   );
 }
 
+function DashIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM3 21h8v-6H3v6zM13 9h8V3h-8v6z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function TicketIcon({ color }: { color: string }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 100 4v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2a2 2 0 100-4V8z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
+      <Path d="M14 6v12" stroke={color} strokeWidth={2} strokeDasharray="2 2" />
+    </Svg>
+  );
+}
+
 export default function AdminLayout() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -39,6 +66,10 @@ export default function AdminLayout() {
       }}
     >
       <Tabs.Screen
+        name="dashboard"
+        options={{ title: 'Dashboard', tabBarIcon: ({ color }) => <DashIcon color={color} /> }}
+      />
+      <Tabs.Screen
         name="orders"
         options={{ title: 'Orders', tabBarIcon: ({ color }) => <OrdersIcon color={color} /> }}
       />
@@ -47,11 +78,18 @@ export default function AdminLayout() {
         options={{ title: 'Products', tabBarIcon: ({ color }) => <BoxesIcon color={color} /> }}
       />
       <Tabs.Screen
+        name="tickets"
+        options={{ title: 'Support', tabBarIcon: ({ color }) => <TicketIcon color={color} /> }}
+      />
+      <Tabs.Screen
         name="account"
         options={{ title: 'Account', tabBarIcon: ({ color }) => <ProfileIcon color={color} /> }}
       />
       {/* Hidden screens — reachable only via router.push, not via tab bar */}
       <Tabs.Screen name="add-product" options={{ href: null }} />
+      <Tabs.Screen name="users" options={{ href: null }} />
+      <Tabs.Screen name="wallet-adjustments" options={{ href: null }} />
+      <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
