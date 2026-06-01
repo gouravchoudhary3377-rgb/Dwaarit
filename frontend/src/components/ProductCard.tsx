@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { Product } from '@/src/api/client';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { useCart } from '@/src/store/cartStore';
+import { formatINR } from '@/src/utils/format';
 
 type Props = {
   product: Product;
@@ -34,7 +35,7 @@ export function ProductCard({ product, onPress }: Props) {
         <Text numberOfLines={1} style={styles.name}>{product.name}</Text>
         <Text style={styles.unit}>{product.unit}</Text>
         <View style={styles.priceRow}>
-          <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+          <Text style={styles.price}>{formatINR(product.price)}</Text>
           <Pressable
             onPress={(e) => { e.stopPropagation(); add(product, 1); }}
             style={({ pressed }) => [styles.addBtn, pressed && { transform: [{ scale: 0.94 }] }]}
