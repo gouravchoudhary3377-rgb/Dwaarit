@@ -101,3 +101,121 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Dwaarit cross-platform grocery delivery app. Customer + admin flows.
+  Auth (email/password + Google), Home/Categories/Search, Cart, Checkout (COD),
+  Order detail tracking, Admin product CRUD + order status updates.
+
+backend:
+  - task: "Auth (login/register/me) + role redirection support"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Re-verify endpoints still healthy."
+  - task: "Products list with category filter + categories endpoint"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Product Detail screen now consumes /products?category=... for related items."
+  - task: "Orders create + list + by-id + admin orders + status update"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Order detail screen consumes GET /api/orders/{order_id}. Verify."
+
+frontend:
+  - task: "Route guards: customers->tabs, admins->admin, unauth->login"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/_layout.tsx, frontend/app/admin/_layout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Guards present using useAuth(); ensure no redirect loops."
+  - task: "Product Detail screen polish (in-cart awareness, stock badge, toast, related)"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/product/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Rewrote with stock badge, in-cart chip, animated toast, horizontal related products, qty clamped to stock."
+  - task: "Customer order detail screen with status timeline"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/order/[id].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Pressable rows from orders list and Track from order-success route to this screen."
+  - task: "Cart + Checkout (COD) flow"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/(tabs)/cart.tsx, frontend/app/checkout.tsx, frontend/app/order-success.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Verify subtotal, address entry, COD place order, success screen, track CTA."
+  - task: "Admin: product CRUD + order status update"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/admin/products.tsx, frontend/app/admin/orders.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Verify add/edit/delete product and changing order status reflects on customer side."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Route guards: customers->tabs, admins->admin, unauth->login"
+    - "Product Detail screen polish (in-cart awareness, stock badge, toast, related)"
+    - "Customer order detail screen with status timeline"
+    - "Cart + Checkout (COD) flow"
+    - "Admin: product CRUD + order status update"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Restarted Expo. Polished Product Detail screen. Please run full backend + frontend E2E (customer + admin). Credentials in /app/memory/test_credentials.md (admin@dwaarit.com / Admin@123). Customer can register a fresh account."
