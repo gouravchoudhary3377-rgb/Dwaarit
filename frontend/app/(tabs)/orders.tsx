@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { api, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
@@ -51,7 +51,11 @@ export default function Orders() {
             </View>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Pressable
+              onPress={() => router.push(`/order/${item.order_id}`)}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+              accessibilityLabel={`Order ${item.order_id.slice(-6).toUpperCase()}`}
+            >
               <View style={styles.cardHead}>
                 <Text style={styles.orderId}>#{item.order_id.slice(-6).toUpperCase()}</Text>
                 <StatusBadge status={item.status} />
@@ -73,7 +77,11 @@ export default function Orders() {
                 <Text style={styles.payment}>{item.payment_method === 'cod' ? 'Cash on Delivery' : 'Card'}</Text>
                 <Text style={styles.total}>${item.total.toFixed(2)}</Text>
               </View>
-            </View>
+              <View style={styles.viewHint}>
+                <Text style={styles.viewHintText}>View details</Text>
+                <Text style={styles.viewHintArrow}>›</Text>
+              </View>
+            </Pressable>
           )}
         />
       )}
@@ -89,6 +97,7 @@ const styles = StyleSheet.create({
   emptyTitle: { ...typography.h3, color: colors.textPrimary, marginBottom: 4 },
   emptySub: { ...typography.body, color: colors.textSecondary },
   card: { backgroundColor: colors.white, borderRadius: radii.lg, padding: spacing.md, ...shadow.soft, gap: 6 },
+  cardPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   orderId: { ...typography.bodyBold, color: colors.textPrimary },
   meta: { ...typography.caption, color: colors.textSecondary },
@@ -97,4 +106,16 @@ const styles = StyleSheet.create({
   cardFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   payment: { ...typography.caption, color: colors.textSecondary },
   total: { ...typography.h3, color: colors.primary },
+  viewHint: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewHintText: { ...typography.captionBold, color: colors.primary },
+  viewHintArrow: { ...typography.bodyBold, color: colors.primary, marginTop: -2 },
 });
