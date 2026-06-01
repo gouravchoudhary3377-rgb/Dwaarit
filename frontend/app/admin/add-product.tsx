@@ -145,7 +145,12 @@ export default function AddProductScreen() {
   }, [token]);
 
   const loadProduct = useCallback(async () => {
-    if (!editId) return;
+    if (!editId) {
+      // Coming back in "create" mode: ensure form is fully reset
+      setForm(EMPTY);
+      setLoadingProduct(false);
+      return;
+    }
     try {
       const products = await api.get<Product[]>('/products', token);
       const p = products.find((x) => x.product_id === editId);
@@ -325,7 +330,9 @@ export default function AddProductScreen() {
       } else {
         await api.post<Product>('/admin/products', payload, token);
       }
-      router.back();
+      // Always go back to the products list and unmount this screen so a future
+      // "New" tap starts with a clean form (no leftover ?id=).
+      router.replace('/admin/products');
     } catch (e: any) {
       setErr(e?.message ?? 'Save failed');
     } finally {

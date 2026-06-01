@@ -50,6 +50,8 @@ export default function AdminLayout() {
         name="account"
         options={{ title: 'Account', tabBarIcon: ({ color }) => <ProfileIcon color={color} /> }}
       />
+      {/* Hidden screens — reachable only via router.push, not via tab bar */}
+      <Tabs.Screen name="add-product" options={{ href: null }} />
     </Tabs>
   );
 }

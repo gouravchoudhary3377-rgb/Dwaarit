@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only retest of P0 add-product tab regression. All 9 review checks executed. CRITICAL FIX CONFIRMED: tapping 'New' after editing a product now resets the form to EMPTY (URL `/admin/add-product?id=` with empty id, title 'Add product', name='' price=''). Tab bar correctly shows only 3 tabs (Orders, Products, Account) — no auto-registered 'add-product' tab. Create → list, Edit → list with updated ₹ price, back-arrow, ₹ currency in list and 'Price (₹)' on form, and inline '+ Add new' category chip mini-form all work. One non-blocking React Native web deprecation warning observed (props.pointerEvents). Backend not retested per request.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "react-native-web", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents.' Emitted on every screen mount. Non-blocking, but should be migrated. Likely originates inside react-native-web or a Pressable wrapper. Reference: visible after admin login on / and /admin/* routes."}
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_7.json"
+  ],
+  "action_items": [
+    "(Optional polish) Track down the `props.pointerEvents is deprecated` warning — search /app/frontend for `pointerEvents=` JSX prop usage and move it into `style={{ pointerEvents: ... }}`.",
+    "No functional action items — the P0 fix is verified end-to-end."
+  ],
+  "critical_code_review_comments": [
+    "_layout.tsx correctly hides add-product with `<Tabs.Screen name=\"add-product\" options={{ href: null }} />` — verified the tab bar renders only 3 tabs.",
+    "products.tsx `openCreate` correctly passes `params: { id: '' }`, producing URL `/admin/add-product?id=` so add-product knows it is in CREATE mode.",
+    "add-product.tsx `loadProduct()` correctly resets the form to empty defaults when `editId` is empty — verified by tapping New twice across an edit cycle.",
+    "router.replace('/admin/products') after save causes a clean unmount; subsequent New taps no longer leak state from the previous edit."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not retested (was 100% in iteration_6)", "frontend": "100% (9/9 review checks passed)"},
+  "seed_data_creation": "Created a transient product 'QA Apple <rand>' and re-edited 'Fresh Strawberries' price during the flow. All test artifacts were cleaned up via admin API: QA Apple deleted, Fresh Strawberries restored to ₹4.99/box, plus stray 'TEST UI Prod z9k2' from an earlier iteration cleaned up. Final /api/products count = 13.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Important when writing Playwright selectors for the admin /admin/products list: each product card renders both 'Edit' and 'Delete' Text buttons. Climbing 6 ancestors via parentElement walks past the row and into the FlatList container, so `parent.textContent.includes(qa_name)` matches even for OTHER rows' buttons. Use a tighter ancestor walk (max 2–3 levels) or scope the locator via `page.locator('div').filter({ hasText: qa_name }).get_by_text('Edit')`. Also note that with Expo Tabs in this app, sibling tab screens stay mounted in the DOM, so `page.get_by_text('New', exact=True).first` may match a hidden 'New' filter chip on /admin/orders — prefer `page.get_by_role('button', name='New')` for the orange create button on /admin/products.",
+  "rca_of_issue": "P0 bug from iteration_6 was: after editing a product and tapping 'New' again, the form was still pre-filled with the previously edited product. RCA confirmed in code: (a) add-product was auto-registered as a 4th Tabs.Screen, so its component instance stayed mounted across navigations and held stale state; (b) products.tsx openCreate did not explicitly pass `id: ''`, so the URL kept the previous `?id=<edited-id>` query and add-product.tsx fell into edit mode. Fixes verified: (1) `<Tabs.Screen name=\"add-product\" options={{ href: null }} />` in /app/frontend/app/admin/_layout.tsx hides + isolates the screen; (2) `router.push({ pathname: '/admin/add-product', params: { id: '' } })` in /app/frontend/app/admin/products.tsx ensures clean create URL; (3) loadProduct() in /app/frontend/app/admin/add-product.tsx resets all form fields when editId is empty; (4) `router.replace('/admin/products')` after save forces unmount. Reproduction in iteration_7: login as admin → Products tab → New (form empty, url ?id=) → fill QA Apple + save → list → Edit any product → change price → save → list → New AGAIN → form is EMPTY and URL is `?id=`. PASS."
+}

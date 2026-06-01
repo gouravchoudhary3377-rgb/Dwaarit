@@ -55,7 +55,9 @@ export default function AdminProducts() {
     }, [load]),
   );
 
-  const openCreate = () => router.push('/admin/add-product');
+  const openCreate = () =>
+    // Explicit empty `id` so the screen never inherits an id from a previous edit push
+    router.push({ pathname: '/admin/add-product', params: { id: '' } });
   const openEdit = (p: Product) =>
     router.push({ pathname: '/admin/add-product', params: { id: p.product_id } });
 
