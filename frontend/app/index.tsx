@@ -1,16 +1,31 @@
-import { Text, View, StyleSheet, Image } from "react-native";
+import React, { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { useAuth } from '@/src/context/AuthContext';
+import { DwaaritMark } from '@/src/components/icons/TabIcons';
+import { colors, spacing, typography } from '@/src/theme';
 
-export default function Index() {
-  console.log(EXPO_PUBLIC_BACKEND_URL, "EXPO_PUBLIC_BACKEND_URL");
+export default function Gate() {
+  const { loading, user } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/(auth)/login');
+    } else if (user.role === 'admin') {
+      router.replace('/(admin)/orders');
+    } else {
+      router.replace('/(tabs)/home');
+    }
+  }, [loading, user]);
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/images/app-image.png")}
-        style={styles.image}
-      />
+      <DwaaritMark color={colors.primary} size={96} />
+      <Text style={styles.brand}>Dwaarit</Text>
+      <Text style={styles.tag}>Fresh groceries at your doorstep</Text>
+      <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
     </View>
   );
 }
@@ -18,13 +33,11 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c0c0c",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
-  image: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
-  },
+  brand: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.md },
+  tag: { ...typography.caption, color: colors.textSecondary },
 });
