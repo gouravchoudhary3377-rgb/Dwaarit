@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -19,6 +18,7 @@ import { api, Product } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { ProductCard } from '@/src/components/ProductCard';
 import { CartIcon } from '@/src/components/icons/TabIcons';
+import { ProductRowSkeleton, CategoryPillSkeleton } from '@/src/components/ui/Skeleton';
 import { useCart } from '@/src/store/cartStore';
 import { displayLabel, shortAddress, useAddressStore } from '@/src/store/addressStore';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
@@ -324,8 +324,10 @@ export default function Home() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} />
+        <View style={{ paddingTop: spacing.md }}>
+          <CategoryPillSkeleton count={6} />
+          <View style={{ height: spacing.lg }} />
+          <ProductRowSkeleton count={6} />
         </View>
       ) : (
         <FlatList

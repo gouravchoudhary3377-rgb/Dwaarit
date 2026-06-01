@@ -333,14 +333,6 @@ export default function Profile() {
             label="Wishlist"
             hint={wishlistCount ? `${wishlistCount} item${wishlistCount === 1 ? '' : 's'} saved` : 'No items yet'}
             onPress={() => router.push('/profile/wishlist')}
-          />
-          <MenuRow
-            icon={IC.gift('#EF6C00')}
-            iconBg="#FFF3E0"
-            iconColor="#EF6C00"
-            label="Refer & Earn"
-            hint="Invite friends, get rewards"
-            onPress={() => notReady('Refer & Earn')}
             isLast
           />
         </Section>
@@ -407,21 +399,8 @@ export default function Profile() {
             iconBg="#ECEFF1"
             iconColor="#455A64"
             label="About Dwaarit"
-            onPress={() => notReady('About Dwaarit')}
-          />
-          <MenuRow
-            icon={IC.shield('#6A1B9A')}
-            iconBg="#F3E5F5"
-            iconColor="#6A1B9A"
-            label="Privacy Policy"
-            onPress={() => notReady('Privacy Policy')}
-          />
-          <MenuRow
-            icon={IC.doc('#EF6C00')}
-            iconBg="#FFF3E0"
-            iconColor="#EF6C00"
-            label="Terms of Service"
-            onPress={() => notReady('Terms of Service')}
+            hint="Privacy, Terms & Contact"
+            onPress={() => router.push('/about')}
             isLast
           />
         </Section>

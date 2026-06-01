@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -7,6 +7,7 @@ import { api, Order, Product } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge } from '@/src/components/StatusBadge';
 import { useCart } from '@/src/store/cartStore';
+import { OrderListSkeleton } from '@/src/components/ui/Skeleton';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
@@ -65,7 +66,7 @@ export default function OrdersScreen() {
     <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
       <Text style={styles.title}>My Orders</Text>
       {loading ? (
-        <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>
+        <OrderListSkeleton count={5} />
       ) : (
         <FlatList
           data={orders}
