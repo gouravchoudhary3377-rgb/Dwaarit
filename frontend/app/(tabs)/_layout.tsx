@@ -6,6 +6,7 @@ import { CartIcon, HomeIcon, OrdersIcon, ProfileIcon } from '@/src/components/ic
 import { colors, typography } from '@/src/theme';
 import { useCart } from '@/src/store/cartStore';
 import { useAuth } from '@/src/context/AuthContext';
+import { useCustomerOrderAlerts } from '@/src/hooks/useCustomerOrderAlerts';
 
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -19,6 +20,10 @@ function Badge({ count }: { count: number }) {
 export default function TabsLayout() {
   const { user, loading } = useAuth();
   const count = useCart((s) => s.lines.reduce((a, b) => a + b.quantity, 0));
+
+  // Customer-side polling for order status transitions → plays soft chimes
+  // (accepted / delivered). No-op for admins / logged-out users.
+  useCustomerOrderAlerts(8000);
 
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)/login" />;

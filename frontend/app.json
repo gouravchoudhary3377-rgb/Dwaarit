@@ -47,7 +47,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Detect your address for fast delivery."
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
