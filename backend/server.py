@@ -126,6 +126,8 @@ class AddressIn(BaseModel):
     line2: str = ""
     city: str
     pincode: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 
 class OrderIn(BaseModel):
