@@ -37,7 +37,8 @@ export default function Login() {
   const [gLoading, setGLoading] = useState(false);
 
   function landingForRole(role?: string) {
-    if (role === 'admin' || role === 'super_admin' || role === 'store_manager') return '/admin/orders';
+    if (role === 'store_manager') return '/store/dashboard';
+    if (role === 'admin' || role === 'super_admin') return '/admin/orders';
     if (role === 'rider') return '/rider/dashboard';
     return '/(tabs)/home';
   }

@@ -20,10 +20,11 @@ from routes.orders import router as orders_router
 from routes.payments import router as payments_router
 from routes.products import router as products_router
 from routes.profile import router as profile_router
+from routes.store import router as store_router
 from routes.support import router as support_router
 from routes.wallet import router as wallet_router
 from routes.wishlist import router as wishlist_router
-from seed import seed_categories, seed_users_and_products
+from seed import seed_categories, seed_store_manager, seed_users_and_products
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s :: %(message)s"
@@ -46,6 +47,7 @@ api.include_router(wishlist_router)
 api.include_router(wallet_router)
 api.include_router(payments_router)
 api.include_router(support_router)
+api.include_router(store_router)
 
 
 @api.get("/")
@@ -63,6 +65,7 @@ async def on_startup():
     await ensure_indexes()
     await seed_users_and_products()
     await seed_categories()
+    await seed_store_manager()
     log.info("Dwaarit API ready.")
 
 

@@ -101,6 +101,72 @@ async def seed_users_and_products() -> None:
         log.info("Seeded %d products.", len(docs))
 
 
+
+async def seed_store_manager() -> None:
+    """Seed the default store-manager user, a default store and a small pool
+    of riders so the Store Manager Panel has something to work with on first
+    boot.
+    """
+    manager_email = "manager@dwaarit.com"
+    manager = await db.users.find_one({"email": manager_email})
+    if not manager:
+        manager = {
+            "user_id": f"user_{uuid.uuid4().hex[:12]}",
+            "email": manager_email,
+            "name": "Dwaarit Store Manager",
+            "password_hash": hash_password("Manager@123"),
+            "role": "store_manager",
+            "auth_provider": "password",
+            "picture": None,
+            "mobile": None,
+            "mobile_verified": False,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(manager)
+        log.info("Seeded store manager user: %s", manager_email)
+    else:
+        # Force-correct role if a legacy record has a different role
+        if manager.get("role") != "store_manager":
+            await db.users.update_one(
+                {"user_id": manager["user_id"]},
+                {"$set": {"role": "store_manager"}},
+            )
+            log.info("Migrated user → store_manager: %s", manager_email)
+
+    # Default store doc linked to this manager
+    store = await db.stores.find_one({"manager_id": manager["user_id"]})
+    if not store:
+        store_doc = {
+            "store_id": f"store_{uuid.uuid4().hex[:10]}",
+            "name": "Dwaarit Central",
+            "manager_id": manager["user_id"],
+            "address": {
+                "line1": "Plot 12, Industrial Area Phase 1",
+                "city": "Pathankot",
+                "state": "Punjab",
+                "pincode": "145001",
+                "lat": 32.2746,
+                "lng": 75.6521,
+            },
+            "phone": "+91 90000 00000",
+            "is_active": True,
+            "service_radius_km": 8,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.stores.insert_one(store_doc)
+        log.info("Seeded default store: %s", store_doc["store_id"])
+        store = store_doc
+
+    # Make sure the pre-seeded rider (rider@dwaarit.com) is attached to this
+    # store and approved, so manager can assign immediately.
+    rider_user = await db.users.find_one({"email": "rider@dwaarit.com"})
+    if rider_user:
+        await db.drivers.update_one(
+            {"user_id": rider_user["user_id"]},
+            {"$set": {"store_id": store["store_id"], "status": "approved"}},
+        )
+
+
 async def seed_categories() -> None:
     if await db.categories.count_documents({}) > 0:
         return

@@ -58,7 +58,10 @@ export default function AdminLayout() {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)/login" />;
-  if (user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'store_manager') {
+  if (user.role === 'store_manager') {
+    return <Redirect href="/store/dashboard" />;
+  }
+  if (user.role !== 'admin' && user.role !== 'super_admin') {
     return <Redirect href="/(tabs)/home" />;
   }
   return (

@@ -1,0 +1,50 @@
+{
+  "summary": "Phase 8.4 (Store Manager Panel) tested end-to-end. Backend: 18/18 pytest cases pass (100%) including RBAC (401/403), /store/me, /store/dashboard shape, /store/orders list+filter, /store/orders/{id} 404, /store/drivers, /store/products (with low_stock filter), and full assign-rider flow with GET-verification. Frontend: After a one-time `supervisorctl restart expo` (Metro had a stale bundle that returned Unmatched Route for /store/* on initial load), all store screens work — login as manager@dwaarit.com routes to /store/dashboard, KPI grid renders with real data (₹139 revenue, 6 pending, 1 in-progress, 0 riders online), /store/orders lists 23 orders with status filters, tapping a card opens /store/order/{id}, /store/drivers, /store/inventory, /store/account all render, and Sign Out returns to /login. RBAC on frontend confirmed — customer (demo@dwaarit.com) navigating to /store/dashboard is redirected to /home. All role-routing regressions PASS: customer→/home, admin→/admin/orders, rider→/rider/dashboard, manager→/store/dashboard. No red screens, no API errors during the flow.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/store/*",
+        "issues": [
+          "No testID attributes on interactive elements (Pressables, KPI cards, filter chips, order cards, accept/assign buttons, modal rider rows). Makes future automated testing brittle — relied on text matching."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "View / Image (legacy props)",
+        "issue": "Console warnings throughout the app (not Phase 8.4 specific): 'props.pointerEvents is deprecated. Use style.pointerEvents' and 'Image: style.resizeMode is deprecated. Please use props.resizeMode.' Likely originate from a shared component. Reference: app-wide."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase84_store_manager.py",
+    "/app/test_reports/pytest/phase84_store_manager.xml"
+  ],
+  "action_items": [
+    "Add testID props to all interactive elements on /store screens (dashboard KPI cards, filter chips, order cards, Accept/Assign/Mark preparing buttons, rider rows in modal, Sign out) so future testing agents can use stable selectors instead of text.",
+    "Optional polish: migrate legacy `pointerEvents` prop to `style.pointerEvents` and `Image style.resizeMode` to `props.resizeMode` in the shared components to silence deprecation warnings.",
+    "Operational note: Metro is running with CI=true (no watch). After adding new route files under /app/frontend/app/store/, an `sudo supervisorctl restart expo` was required for the routes to be served — without it /store/* returned 'Unmatched Route'. Consider documenting this or enabling watch mode in dev."
+  ],
+  "critical_code_review_comments": [
+    "Backend /api/store/* RBAC is correctly enforced via require_store_manager dependency — customer/rider tokens get 403, missing token gets 401.",
+    "Frontend /store/_layout.tsx correctly redirects non-managers (customer→/(tabs)/home, rider→/rider/dashboard); admins are allowed in (intentional per code).",
+    "/store/order/[id].tsx assign-rider flow correctly calls StoreApi.assignRider then reloads order; backend confirmed via GET that driver_id & driver_status='assigned' persist.",
+    "useStoreToken hook duplicates the secureGet logic from AuthContext (key 'dwaarit.auth.token'). Same pattern is used for rider portal — consider unifying."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (18/18)",
+    "frontend": "100% (all 7 requested store flows + 4 role-routing regressions)"
+  },
+  "seed_data_creation": "None. Used existing seeded users (manager@dwaarit.com, demo@dwaarit.com, admin@dwaarit.com, rider@dwaarit.com) and existing seeded store/orders/drivers/products.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 8.4 fully working. Store backend endpoints live under /api/store/* (assign endpoint is /assign-rider, not /assign as the original request mentioned). Frontend store routes are file-based at /app/frontend/app/store/{dashboard,orders,drivers,inventory,account,order/[id]}.tsx with tabs in _layout.tsx. If routes start returning 'Unmatched Route' after adding files, restart expo via supervisorctl. Test creds in /app/memory/test_credentials.md.",
+  "rca_of_issue": "On the very first frontend test pass, /store/dashboard redirected the manager to /admin/orders and /store/drivers|inventory|account returned 'Unmatched Route'. Root cause: Metro bundler was running in CI mode without watch (per expo.out.log: 'Metro is running in CI mode, reloads are disabled'). The store/*.tsx files had been added after Metro started, so they were not in the bundled route manifest — falling back to web 404 / nearest match. Mitigation: `sudo supervisorctl restart expo`. After restart, all 7 store flows + 4 role-routing regressions passed cleanly. No code change required."
+}
