@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { CartLine, useCart } from '@/src/store/cartStore';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 function QtyStepper({ line }: { line: CartLine }) {
   const setQty = useCart((s) => s.setQty);
