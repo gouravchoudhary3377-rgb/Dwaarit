@@ -14,7 +14,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { WebView } from 'react-native-webview';
 import Svg, { Path } from 'react-native-svg';
 
-import { api, Order } from '@/src/api/client';
+import { api, Order, OrderDriverLocation } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { StatusBadge } from '@/src/components/StatusBadge';
@@ -198,7 +198,11 @@ function buildMapHTML(opts: {
       var startTs = Date.now() - (initialProgress * durationSec * 1000);
       setProgress(progress);
 
+      // When live mode is enabled (real driver location available), we pause the simulation.
+      var liveMode = false;
+
       var tick = setInterval(function () {
+        if (liveMode) return;
         var elapsed = (Date.now() - startTs) / 1000;
         var p = elapsed / durationSec;
         if (p >= 1) {
@@ -217,6 +221,20 @@ function buildMapHTML(opts: {
       window.recenter = function () {
         try { map.fitBounds(route.getBounds(), { padding: [60, 60] }); } catch (e) {}
       };
+
+      // Expose a live-driver-location API. Once invoked, simulation pauses and
+      // the driver marker / traveled-path follow the real coordinates.
+      window.setLiveDriver = function (lat, lng) {
+        if (typeof lat !== 'number' || typeof lng !== 'number') return;
+        liveMode = true;
+        driver.setLatLng([lat, lng]);
+        traveled.setLatLngs([start, [lat, lng]]);
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(
+            JSON.stringify({ type: 'live', lat: lat, lng: lng })
+          );
+        }
+      };
     })();
     true;
   </script>
@@ -232,6 +250,7 @@ export default function OrderTrack() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [secondsLeft, setSecondsLeft] = useState<number>(TOTAL_DURATION_SEC);
+  const [riderInfo, setRiderInfo] = useState<OrderDriverLocation | null>(null);
   const webViewRef = useRef<WebView>(null);
 
   // Persist a per-order start time so the simulation continues across refreshes.
@@ -249,10 +268,45 @@ export default function OrderTrack() {
     }
   }, [id, token]);
 
+  // Poll live driver location/assignment for this order
+  const loadRider = useCallback(async () => {
+    if (!id || !token) return;
+    try {
+      const info = await api.get<OrderDriverLocation>(
+        `/orders/${id}/driver-location`,
+        token,
+      );
+      setRiderInfo(info);
+    } catch (e) {
+      // ignore polling errors; UI will just keep last good state
+    }
+  }, [id, token]);
+
   useEffect(() => {
     load();
   }, [load]);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { load(); loadRider(); }, [load, loadRider]));
+
+  // Periodic polling for driver assignment + live location
+  useEffect(() => {
+    if (!order) return;
+    // stop polling for terminal states
+    if (['delivered', 'cancelled'].includes(order.status)) return;
+    loadRider();
+    const t = setInterval(loadRider, 5000);
+    return () => clearInterval(t);
+  }, [order, loadRider]);
+
+  // When live location available, push it into the WebView so the marker tracks the real rider.
+  useEffect(() => {
+    if (!riderInfo || !('assigned' in riderInfo) || !riderInfo.assigned) return;
+    const lat = riderInfo.location?.lat;
+    const lng = riderInfo.location?.lng;
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      const js = `window.setLiveDriver && window.setLiveDriver(${lat}, ${lng}); true;`;
+      webViewRef.current?.injectJavaScript(js);
+    }
+  }, [riderInfo]);
 
   // Compute initial progress based on order created_at -> elapsed seconds
   const initialProgress = useMemo(() => {
@@ -302,12 +356,25 @@ export default function OrderTrack() {
     });
   }, [order, initialProgress]);
 
+  const assignedDriver =
+    riderInfo && 'assigned' in riderInfo && riderInfo.assigned
+      ? riderInfo.driver
+      : null;
+  const driverPhone = assignedDriver?.phone || '';
+
   const onCallDriver = useCallback(() => {
-    const phone = '+919999999999';
-    Linking.openURL(`tel:${phone}`).catch(() =>
+    if (!driverPhone) {
+      Alert.alert(
+        'Driver not assigned yet',
+        'We will share contact details as soon as a rider accepts your order.',
+      );
+      return;
+    }
+    const tel = driverPhone.replace(/[^0-9+]/g, '');
+    Linking.openURL(`tel:${tel}`).catch(() =>
       Alert.alert('Unable to call', 'Please try again later.'),
     );
-  }, []);
+  }, [driverPhone]);
 
   const onChatSupport = useCallback(() => {
     router.push('/profile/support' as any);
@@ -392,13 +459,35 @@ export default function OrderTrack() {
 
         <View style={styles.driverRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>R</Text>
+            <Text style={styles.avatarText}>
+              {assignedDriver?.name ? assignedDriver.name.trim().charAt(0).toUpperCase() : '🛵'}
+            </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>Rohit · Delivery partner</Text>
-            <Text style={styles.driverMeta}>Two-wheeler · KA-01 · ⭐ 4.9</Text>
+            {assignedDriver ? (
+              <>
+                <Text style={styles.driverName} numberOfLines={1}>
+                  {assignedDriver.name || 'Delivery partner'} · Delivery partner
+                </Text>
+                <Text style={styles.driverMeta} numberOfLines={1}>
+                  {(assignedDriver.vehicle || 'Two-wheeler')}
+                  {driverPhone ? ` · ${driverPhone}` : ''}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.driverName}>Finding a rider for you…</Text>
+                <Text style={styles.driverMeta}>
+                  We&apos;ll share rider details as soon as one accepts.
+                </Text>
+              </>
+            )}
           </View>
-          <Pressable style={styles.callBtn} onPress={onCallDriver} hitSlop={10}>
+          <Pressable
+            style={[styles.callBtn, !driverPhone && styles.callBtnDisabled]}
+            onPress={onCallDriver}
+            hitSlop={10}
+          >
             <PhoneIcon />
           </Pressable>
         </View>
@@ -512,6 +601,10 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.success,
     alignItems: 'center', justifyContent: 'center',
+  },
+  callBtnDisabled: {
+    backgroundColor: colors.border,
+    opacity: 0.85,
   },
 
   addrBox: {

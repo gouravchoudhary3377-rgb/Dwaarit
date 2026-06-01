@@ -160,7 +160,31 @@ export type Order = {
   status: 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled';
   created_at: string;
   updated_at: string;
+  // Optional fields set after a rider is assigned to the order
+  driver_id?: string | null;
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  driver_vehicle?: string | null;
+  driver_status?: string | null;
+  assigned_at?: string | null;
 };
+
+export type OrderDriverLocation =
+  | { assigned: false }
+  | {
+      assigned: true;
+      driver: {
+        driver_id: string;
+        name?: string | null;
+        phone?: string | null;
+        vehicle?: string | null;
+      };
+      location: {
+        lat?: number | null;
+        lng?: number | null;
+        updated_at?: string | null;
+      };
+    };
 
 export type Invoice = {
   invoice_no: string;

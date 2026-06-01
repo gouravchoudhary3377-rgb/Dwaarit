@@ -263,13 +263,37 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 3: Wallet top-up (Razorpay mock) + balance display"
-    - "Phase 3: Checkout — wallet apply + Razorpay mock payment + COD"
-    - "Phase 4: Order Detail screen — payment breakdown + Download Invoice PDF"
-    - "Phase 4: Invoice endpoint /api/orders/{id}/invoice returns full data"
+    - "Phase 8.5 backend: GET /api/orders/{id}/driver-location authZ + assigned flag"
+    - "Phase 8.5 frontend: Customer track screen — 'Finding rider…' UI + live driver polling"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+phase_8_5_backend:
+  - task: "GET /api/orders/{order_id}/driver-location — assigned flag + authZ matrix"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/orders.py, backend/routes/drivers.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Endpoint should return assigned=false when no driver_id on the order. Once a rider accepts (driver_id set), should return assigned=true with driver{name,phone,vehicle_type} + location{lat,lng,updated_at} when driver location available. AuthZ matrix: owner=200, unauth=401, other-customer=403, admin/super_admin/store_manager=200."
+
+phase_8_5_frontend:
+  - task: "Customer Track screen — 'Finding a rider…' fallback + live driver polling"
+    implemented: true
+    working: "NA"
+    file: "frontend/app/order/[id]/track.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "track.tsx now polls /api/orders/{id}/driver-location every 5s while order is in non-terminal status. When assigned=false → shows 'Finding a rider for you…' card, Call button disabled. When assigned=true → renders real driver name/phone/vehicle and Call button calls Linking.openURL('tel:'+phone). When location lat/lng arrive → injectJavaScript triggers window.setLiveDriver(lat,lng) in Leaflet WebView. Polling stops for delivered/cancelled."
 
 backend:
   - task: "Invoice endpoint /api/orders/{order_id}/invoice"
@@ -370,5 +394,7 @@ agent_communication:
     message: "P0 frontend validation: please test the new Address Book wiring end-to-end. Login as demo@dwaarit.com / Demo@123."
   - agent: "main"
     message: "Phase 2 UI validation needed. Login as demo@dwaarit.com / Demo@123. (1) Profile tab → tap the pencil icon → verify /profile/edit opens without crash and lets user update name/mobile. (2) Profile tab → tap 'Wallet' row → verify /profile/wallet opens and lists balance + recent transactions (empty state acceptable). (3) Profile tab → tap 'Wishlist' row → verify /profile/wishlist opens (empty state acceptable). (4) Orders tab → for any visible order verify 'Reorder' and 'Track order' buttons render and Reorder navigates to cart. SKIP backend retesting."
+  - agent: "main"
+    message: "Phase 8.5 IMPLEMENTED (Customer-facing Rider Card + Live Assignment). /app/frontend/app/order/[id]/track.tsx now polls GET /api/orders/{id}/driver-location every 5s while order is in non-terminal status (pending/accepted/out_for_delivery). UI: when assigned=false shows 'Finding a rider for you…' card + greys out the call button + Alert on press. When assigned=true shows real driver name/vehicle/phone and the Call button dials the real number (Linking.openURL tel:). When location lat/lng arrive, injectJavaScript invokes window.setLiveDriver(lat,lng) in the Leaflet WebView which switches the marker to liveMode and follows real coords (simulation paused). Polling stops for delivered/cancelled. Please test: (a) login demo@dwaarit.com/Demo@123 → place a COD order → open /order/{id}/track → assert 'Finding a rider...' card renders + call button disabled state. (b) login rider@dwaarit.com/Rider@123 → accept the order via rider app → switch back to customer track screen and assert driver name/phone appear within 5-10s and Call button is enabled. (c) Backend: GET /api/orders/{id}/driver-location returns assigned=false when no driver, and assigned=true with driver{name,phone,vehicle}+location after assignment. AuthZ: only the order owner OR staff (admin/super_admin/store_manager) can hit this endpoint. Other customers must get 403."
   - agent: "testing"
     message: "Phase 3 + Phase 4 BACKEND validation COMPLETE — 19/19 new tests pass, full suite 50/50. New file: backend/tests/test_phase34_wallet_payments_invoke.py (Wallet baseline, Razorpay-mock create-order + verify + idempotency, wallet/razorpay/cod order placement, order list/detail, invoice schema + authZ matrix [owner/unauth/other-user/admin], admin cancel -> wallet refund). KEY FINDINGS: (1) Actual top-up route is POST /api/payments/razorpay/create-order (NOT /api/payments/order as in the request) — request body is {amount, order_id?}. (2) Mock-mode confirmed: GET /api/payments/config returns razorpay_enabled=false, create-order returns mode='mock' + order_id prefixed 'order_mock_'. (3) Wallet verify is correctly idempotent (re-posting same payment_id returns duplicate=true, no double-credit). (4) Razorpay mock flow flips order.payment_status to 'paid' and persists razorpay_payment_id. (5) Invoice authZ matrix is fully correct: owner=200, unauth=401, other-customer=403, admin=200. (6) Admin cancel on a fully-wallet-paid order generates a 'refund' wallet_txn. NON-BLOCKING BUSINESS-LOGIC GAP TO REVIEW WITH PRODUCT: cancelling a partial-wallet order (payment_status='pending', wallet_applied>0) does NOT refund the wallet_applied portion because the refund gate in routes/orders.py is payment_status in ('paid','cod'). Consider refunding wallet_applied regardless of remaining payable. ALSO FIXED: stale assertion in tests/test_dwaarit_api.py::test_customer_create_order (was asserting order.total == subtotal but Phase 3 added a ₹25 flat delivery fee for orders <₹499); updated assertion to include expected_delivery. No backend code changes were required."
