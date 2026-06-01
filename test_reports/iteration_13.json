@@ -1,0 +1,37 @@
+{
+  "summary": "Phase 8.3 Rider portal re-validation. Backend pytest: 17/17 PASS (extended RBAC: rider JWT 403 on /api/admin/drivers, /api/admin/orders, /api/admin/stores). Frontend (390x844 mobile viewport) end-to-end PASS: rider login -> /rider/dashboard, dashboard greeting/online toggle/stats/active orders/recent earnings/quick links render, online switch toggles UI+backend (True->False, 'You are Online'->'You are Offline'), /rider/orders shows tabs Active/Delivered/All and pre-assigned order #32F7E8 appears under Delivered/All (order ord_c5ecdd32f7e8 was already delivered in iteration_12), /rider/earnings shows hero ₹25 + 1 deliveries + Last 14 days bar, /rider/profile shows Test Rider, rider@dwaarit.com, APPROVED, phone 9999999999, vehicle bike MH-12-AB-1234, Sign out -> /login. RBAC frontend: demo customer redirected from /rider/dashboard to /home. No red screens, no JS errors. Two non-blocking RN web warnings present (props.pointerEvents deprecation, useNativeDriver web fallback).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "pointerEvents prop", "issue": "Console warns repeatedly: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking. Reference: shared UI components (e.g. Toast/Pressable wrappers) — search `pointerEvents=` across /app/frontend/src/components/."},
+      {"component": "Animated useNativeDriver (web only)", "issue": "Console warns 'useNativeDriver is not supported because the native animated module is missing. Falling back to JS-based animation' — expected on Expo web preview, will not impact native builds."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase83_rider.py",
+    "/app/test_reports/pytest/phase83_rider.xml"
+  ],
+  "action_items": [
+    "(Optional) Note for main agent: review_request mentioned 'POST /api/rider/status' with body {status: 'online'} and order status 'picked_up'. Actual implementation uses POST /api/rider/online with {online: bool} and order statuses out_for_delivery/delivered. Frontend uses the actual contract, so functionally fine — but agent_to_agent spec wording does not match code. Recommend aligning spec wording in PRD.",
+    "(Optional) Migrate any remaining `pointerEvents` props to `style.pointerEvents` to silence Expo SDK deprecation warnings.",
+    "(Nice-to-have) After a rider marks an order delivered, /rider/orders 'Active' tab becomes empty; consider auto-switching to 'Delivered' tab or showing a hint banner with the latest delivered order id."
+  ],
+  "critical_code_review_comments": [
+    "drivers.py POST /rider/orders/{order_id}/status uses `body: dict` — works (validates allowed values) but a Pydantic model would give stronger typing/422 semantics.",
+    "Dashboard 'useToken' hook reads from secure storage on mount only — OK because AuthContext stores token before navigation, but if token rotates while dashboard is mounted, API calls would still use the stale token. Low-priority.",
+    "RBAC enforcement is correct: /api/admin/* endpoints reject rider token with 401/403 (verified via 3 new pytest assertions)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase83_rider.py (added 3 RBAC tests: rider -> /api/admin/drivers, /api/admin/orders, /api/admin/stores)",
+    "/app/test_reports/pytest/phase83_rider.xml (regenerated)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "100% (all targeted flows verified)"},
+  "seed_data_creation": "None. Used pre-seeded rider drv_2a5c03fa24 and the existing assigned order ord_c5ecdd32f7e8 (already in 'delivered' state from iteration_12; status-flow test is idempotent and re-asserts 200 on delivered->delivered).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 8.3 fully green for the second iteration. Order ord_c5ecdd32f7e8 remains 'delivered' and rider earnings show ₹25 / 1 delivery. To re-test the full out_for_delivery -> delivered transition end-to-end via UI, seed a new order assigned to drv_2a5c03fa24 (e.g. via POST /api/admin/orders/{id}/assign with a fresh pending order).",
+  "rca_of_issue": "N/A — no failures detected."
+}

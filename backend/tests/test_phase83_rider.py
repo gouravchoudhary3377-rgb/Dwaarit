@@ -190,3 +190,23 @@ class TestRBAC:
     def test_unauth_rider_me(self):
         r = requests.get(f"{API}/rider/me", timeout=15)
         assert r.status_code in (401, 403)
+
+    def test_rider_cannot_access_admin_drivers(self, rider_token):
+        r = requests.get(f"{API}/admin/drivers", headers=_h(rider_token), timeout=15)
+        assert r.status_code in (401, 403), r.text
+
+    def test_rider_cannot_access_admin_orders(self, rider_token):
+        # Confirm rider JWT is rejected on admin order management
+        r = requests.get(f"{API}/admin/orders", headers=_h(rider_token), timeout=15)
+        assert r.status_code in (401, 403), r.text
+
+    def test_rider_cannot_create_store(self, rider_token):
+        # super-admin-only endpoint
+        r = requests.post(
+            f"{API}/admin/stores",
+            json={"name": "TEST_unauth_store", "address": "x", "city": "y", "pincode": "000000"},
+            headers=_h(rider_token),
+            timeout=15,
+        )
+        assert r.status_code in (401, 403), r.text
+
