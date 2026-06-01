@@ -13,7 +13,7 @@ class UserPublic(BaseModel):
     user_id: str
     email: EmailStr
     name: str
-    role: Literal["customer", "admin"] = "customer"
+    role: Literal["customer", "admin", "super_admin", "store_manager", "rider"] = "customer"
     auth_provider: Literal["password", "google"] = "password"
     picture: Optional[str] = None
     mobile: Optional[str] = None
@@ -200,3 +200,93 @@ class SavePaymentMethodIn(BaseModel):
 class SupportChatIn(BaseModel):
     ticket_id: Optional[str] = None
     message: str = Field(min_length=1, max_length=2000)
+
+
+# ---------- Drivers / Riders ----------
+DriverStatus = Literal["pending", "approved", "rejected", "suspended"]
+VehicleType = Literal["bike", "scooter", "bicycle", "ev", "car"]
+
+
+class DriverDocs(BaseModel):
+    license_no: str = ""
+    license_image: str = ""  # base64 data URL
+    aadhaar_no: str = ""
+    aadhaar_image: str = ""
+    pan_no: str = ""
+    pan_image: str = ""
+    rc_no: str = ""
+    rc_image: str = ""
+    insurance_no: str = ""
+    insurance_image: str = ""
+
+
+class DriverIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    email: EmailStr
+    phone: str = Field(min_length=8, max_length=15)
+    password: str = Field(min_length=6)
+    vehicle_type: VehicleType = "bike"
+    vehicle_number: str = ""
+    store_id: Optional[str] = None
+    docs: Optional[DriverDocs] = None
+
+
+class DriverUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    vehicle_type: Optional[VehicleType] = None
+    vehicle_number: Optional[str] = None
+    store_id: Optional[str] = None
+    status: Optional[DriverStatus] = None
+    docs: Optional[DriverDocs] = None
+    is_online: Optional[bool] = None
+
+
+class RiderLocationIn(BaseModel):
+    lat: float
+    lng: float
+
+
+class RiderOnlineIn(BaseModel):
+    online: bool
+
+
+# ---------- Stores ----------
+class StoreIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    code: str = ""
+    address: str = ""
+    city: str = ""
+    pincode: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    phone: Optional[str] = None
+    manager_email: Optional[EmailStr] = None
+
+
+class StoreUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    pincode: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    phone: Optional[str] = None
+    manager_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+# ---------- Order Assignment ----------
+class OrderAssignIn(BaseModel):
+    driver_id: str
+
+
+# ---------- Rider Application (public onboarding) ----------
+class RiderApplicationIn(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    city: str
+    vehicle_type: VehicleType = "bike"
+    note: str = ""

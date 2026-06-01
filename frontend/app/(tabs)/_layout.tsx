@@ -27,7 +27,10 @@ export default function TabsLayout() {
 
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)/login" />;
-  if (user.role === 'admin') return <Redirect href="/admin/orders" />;
+  if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'store_manager') {
+    return <Redirect href="/admin/orders" />;
+  }
+  if (user.role === 'rider') return <Redirect href="/rider/dashboard" />;
 
   return (
     <Tabs

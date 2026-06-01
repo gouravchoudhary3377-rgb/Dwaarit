@@ -32,3 +32,18 @@ async def ensure_indexes() -> None:
     await db.support_tickets.create_index("ticket_id", unique=True)
     await db.support_tickets.create_index("user_id")
     await db.support_messages.create_index([("ticket_id", 1), ("created_at", 1)])
+
+    # ---- Phase 8: Drivers / Stores / RBAC ----
+    await db.drivers.create_index("driver_id", unique=True)
+    await db.drivers.create_index("user_id", unique=True)
+    await db.drivers.create_index("status")
+    await db.drivers.create_index("store_id")
+    await db.stores.create_index("store_id", unique=True)
+    await db.stores.create_index("code", unique=True, sparse=True)
+    await db.rider_applications.create_index("application_id", unique=True)
+    await db.rider_applications.create_index("email")
+    await db.audit_logs.create_index([("user_id", 1), ("created_at", -1)])
+    await db.audit_logs.create_index("created_at")
+    await db.login_history.create_index([("user_id", 1), ("created_at", -1)])
+    await db.driver_locations.create_index("driver_id", unique=True)
+    await db.driver_earnings.create_index([("driver_id", 1), ("created_at", -1)])

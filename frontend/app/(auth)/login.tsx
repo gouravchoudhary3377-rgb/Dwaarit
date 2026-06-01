@@ -58,7 +58,7 @@ export default function Login() {
     setGLoading(true);
     try {
       const u = await signInWithGoogle();
-      if (u) router.replace(u.role === 'admin' ? '/(admin)/orders' : '/(tabs)/home');
+      if (u) router.replace((u.role === 'admin' || u.role === 'super_admin' || u.role === 'store_manager') ? '/admin/orders' : '/(tabs)/home');
     } catch (e: any) {
       setErr(e?.message ?? 'Google sign-in failed');
     } finally {

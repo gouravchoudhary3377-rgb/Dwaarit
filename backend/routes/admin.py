@@ -16,7 +16,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 # -------- Schemas --------
 class RoleUpdateIn(BaseModel):
-    role: Literal["customer", "admin"]
+    role: Literal["customer", "admin", "super_admin", "store_manager", "rider"]
 
 
 class WalletAdjustIn(BaseModel):

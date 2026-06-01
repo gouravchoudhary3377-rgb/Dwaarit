@@ -114,7 +114,7 @@ function AboutSection() {
       <Card title="Why people love Dwaarit">
         <Bullet>10-minute delivery from our nearest dark store, 7 days a week.</Bullet>
         <Bullet>Over 5,000 daily essentials — fruits, vegetables, dairy, snacks, household & personal care.</Bullet>
-        <Bullet>100% freshness guarantee — if it's not fresh, we refund instantly.</Bullet>
+        <Bullet>100% freshness guarantee — if it&apos;s not fresh, we refund instantly.</Bullet>
         <Bullet>Honest, transparent pricing with no hidden charges at checkout.</Bullet>
         <Bullet>Friendly 24×7 in-app AI support that escalates to a human when needed.</Bullet>
       </Card>

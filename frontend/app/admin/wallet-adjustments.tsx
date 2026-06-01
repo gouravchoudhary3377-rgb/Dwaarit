@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   typeChipText: { ...typography.captionBold, color: colors.textSecondary },
 
   submit: { marginTop: 16, backgroundColor: colors.primary, borderRadius: radii.md, paddingVertical: 14, alignItems: 'center' },
-  submitText: { color: colors.white, fontWeight: '800', ...typography.body },
+  submitText: { color: colors.white, ...typography.body, fontWeight: '800' },
 
   txnRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

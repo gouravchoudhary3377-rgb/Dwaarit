@@ -28,6 +28,7 @@ export type ServerAddress = {
   address_id: string;
   user_id: string;
   label: 'home' | 'work' | 'other';
+  custom_label?: string;
   full_name: string;
   phone: string;
   line1: string;

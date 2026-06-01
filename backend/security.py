@@ -69,6 +69,40 @@ async def get_current_user(authorization: Optional[str] = Header(default=None)) 
 
 
 async def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
+    """Legacy alias — allows both 'admin' (deprecated) and 'super_admin'."""
+    role = user.get("role")
+    if role not in ("admin", "super_admin"):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin only")
+    return user
+
+
+def _effective_role(user: dict) -> str:
+    """Normalise legacy 'admin' to 'super_admin'."""
+    role = user.get("role", "customer")
+    return "super_admin" if role == "admin" else role
+
+
+async def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
+    if _effective_role(user) != "super_admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Super Admin only")
+    return user
+
+
+async def require_staff(user: dict = Depends(get_current_user)) -> dict:
+    """Any back-office role: super_admin or store_manager."""
+    if _effective_role(user) not in ("super_admin", "store_manager"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Staff only")
+    return user
+
+
+async def require_store_manager(user: dict = Depends(get_current_user)) -> dict:
+    """Store manager only — super_admin also allowed for oversight."""
+    if _effective_role(user) not in ("super_admin", "store_manager"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Store Manager only")
+    return user
+
+
+async def require_rider(user: dict = Depends(get_current_user)) -> dict:
+    if _effective_role(user) != "rider":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Rider only")
     return user

@@ -45,11 +45,22 @@ function TicketIcon({ color }: { color: string }) {
   );
 }
 
+function BikeIcon({ color }: { color: string }) {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+      <Path d="M5.5 18a3 3 0 100-6 3 3 0 000 6zM18.5 18a3 3 0 100-6 3 3 0 000 6z" stroke={color} strokeWidth={2} />
+      <Path d="M8 15h4l3-6h3M12 9l-2-4h-3" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export default function AdminLayout() {
   const { user, loading } = useAuth();
   if (loading) return null;
   if (!user) return <Redirect href="/(auth)/login" />;
-  if (user.role !== 'admin') return <Redirect href="/(tabs)/home" />;
+  if (user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'store_manager') {
+    return <Redirect href="/(tabs)/home" />;
+  }
   return (
     <Tabs
       screenOptions={{
@@ -80,6 +91,10 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="tickets"
         options={{ title: 'Support', tabBarIcon: ({ color }) => <TicketIcon color={color} /> }}
+      />
+      <Tabs.Screen
+        name="drivers"
+        options={{ title: 'Drivers', tabBarIcon: ({ color }) => <BikeIcon color={color} /> }}
       />
       <Tabs.Screen
         name="account"

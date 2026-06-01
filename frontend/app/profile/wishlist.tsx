@@ -71,9 +71,12 @@ export default function Wishlist() {
     addToCart({
       product_id: item.product_id,
       name: item.name,
-      image_url: item.image_url,
-      unit: item.unit,
+      description: item.description,
       price: item.price,
+      unit: item.unit,
+      category: item.category,
+      image_url: item.image_url,
+      stock: item.stock,
     });
     remove(item.product_id);
   }
@@ -97,7 +100,7 @@ export default function Wishlist() {
           </View>
           <Text style={styles.emptyTitle}>Your wishlist is empty</Text>
           <Text style={styles.emptyText}>Tap the heart on any product to save it for later.</Text>
-          <Pressable style={styles.shopBtn} onPress={() => router.push('/(tabs)/')}>
+          <Pressable style={styles.shopBtn} onPress={() => router.push('/(tabs)/home')}>
             <Text style={styles.shopBtnText}>Browse products</Text>
           </Pressable>
         </View>

@@ -63,7 +63,7 @@ export type AuthUser = {
   user_id: string;
   email: string;
   name: string;
-  role: 'customer' | 'admin';
+  role: 'customer' | 'admin' | 'super_admin' | 'store_manager' | 'rider';
   auth_provider: 'password' | 'google';
   picture?: string | null;
   mobile?: string | null;

@@ -15,20 +15,28 @@ log = logging.getLogger("dwaarit.seed")
 
 async def seed_users_and_products() -> None:
     admin_email = "admin@dwaarit.com"
-    if not await db.users.find_one({"email": admin_email}):
+    existing_admin = await db.users.find_one({"email": admin_email})
+    if not existing_admin:
         await db.users.insert_one({
             "user_id": f"user_{uuid.uuid4().hex[:12]}",
             "email": admin_email,
             "name": "Dwaarit Admin",
             "password_hash": hash_password("Admin@123"),
-            "role": "admin",
+            "role": "super_admin",
             "auth_provider": "password",
             "picture": None,
             "mobile": None,
             "mobile_verified": False,
             "created_at": datetime.now(timezone.utc),
         })
-        log.info("Seeded admin user: %s", admin_email)
+        log.info("Seeded super admin user: %s", admin_email)
+    elif existing_admin.get("role") == "admin":
+        # Migrate legacy 'admin' → 'super_admin'
+        await db.users.update_one(
+            {"user_id": existing_admin["user_id"]},
+            {"$set": {"role": "super_admin"}},
+        )
+        log.info("Migrated admin → super_admin: %s", admin_email)
 
     demo_email = "demo@dwaarit.com"
     if not await db.users.find_one({"email": demo_email}):

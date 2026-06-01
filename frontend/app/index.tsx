@@ -13,8 +13,10 @@ export default function Gate() {
     if (loading) return;
     if (!user) {
       router.replace('/(auth)/login');
-    } else if (user.role === 'admin') {
+    } else if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'store_manager') {
       router.replace('/admin/orders');
+    } else if (user.role === 'rider') {
+      router.replace('/rider/dashboard');
     } else {
       router.replace('/(tabs)/home');
     }

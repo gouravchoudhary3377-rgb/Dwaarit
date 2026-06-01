@@ -15,6 +15,7 @@ from routes.addresses import router as addresses_router
 from routes.admin import router as admin_router
 from routes.auth import router as auth_router
 from routes.categories import router as categories_router
+from routes.drivers import router as drivers_router
 from routes.orders import router as orders_router
 from routes.payments import router as payments_router
 from routes.products import router as products_router
@@ -35,6 +36,7 @@ api = APIRouter(prefix="/api")
 # mount feature routers
 api.include_router(auth_router)
 api.include_router(admin_router)
+api.include_router(drivers_router)
 api.include_router(products_router)
 api.include_router(categories_router)
 api.include_router(orders_router)

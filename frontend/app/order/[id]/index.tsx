@@ -498,6 +498,7 @@ const styles = StyleSheet.create({
   payK: { ...typography.body, color: colors.textSecondary },
   payV: { ...typography.bodyBold, color: colors.textPrimary },
   payVfree: { ...typography.bodyBold, color: colors.success },
+  payVwallet: { ...typography.bodyBold, color: colors.success },
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 6 },
   totalK: { ...typography.bodyBold, color: colors.textPrimary },
   totalV: { ...typography.h3, color: colors.primary },
@@ -508,4 +509,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill,
   },
   payMethodText: { ...typography.tiny, fontWeight: '700', color: colors.primary },
+
+  // CTA buttons
+  cta: {
+    borderRadius: radii.lg,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaPrimary: { backgroundColor: colors.primary, ...shadow.soft },
+  ctaPrimaryText: { ...typography.bodyBold, color: colors.white },
+  ctaSecondary: {
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  ctaSecondaryText: { ...typography.bodyBold, color: colors.primary },
 });
