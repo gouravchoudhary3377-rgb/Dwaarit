@@ -69,8 +69,8 @@ export default function Cart() {
                 <Image source={{ uri: item.product.image_url }} style={styles.thumb} contentFit="cover" />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text numberOfLines={1} style={styles.name}>{item.product.name}</Text>
-                  <Text style={styles.unit}>${item.product.price.toFixed(2)} / {item.product.unit}</Text>
-                  <Text style={styles.lineTotal}>${(item.product.price * item.quantity).toFixed(2)}</Text>
+                  <Text style={styles.unit}>{formatINR(item.product.price)} / {item.product.unit}</Text>
+                  <Text style={styles.lineTotal}>{formatINR(item.product.price * item.quantity)}</Text>
                 </View>
                 <QtyStepper line={item} />
               </View>
