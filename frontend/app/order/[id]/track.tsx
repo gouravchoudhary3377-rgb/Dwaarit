@@ -452,45 +452,49 @@ export default function OrderTrack() {
 
       {/* Bottom info sheet */}
       <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}>
-        <View style={styles.etaPill}>
-          <View style={[styles.etaDot, arrived && { backgroundColor: colors.success }]} />
-          <Text style={styles.etaPillText}>{etaLabel}</Text>
-        </View>
+        {isLive ? (
+          <>
+            <View style={styles.etaPill}>
+              <View style={[styles.etaDot, arrived && { backgroundColor: colors.success }]} />
+              <Text style={styles.etaPillText}>{etaLabel}</Text>
+            </View>
 
-        <View style={styles.driverRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {assignedDriver?.name ? assignedDriver.name.trim().charAt(0).toUpperCase() : '🛵'}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            {assignedDriver ? (
-              <>
-                <Text style={styles.driverName} numberOfLines={1}>
-                  {assignedDriver.name || 'Delivery partner'} · Delivery partner
+            <View style={styles.driverRow}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {assignedDriver?.name ? assignedDriver.name.trim().charAt(0).toUpperCase() : '🛵'}
                 </Text>
-                <Text style={styles.driverMeta} numberOfLines={1}>
-                  {(assignedDriver.vehicle || 'Two-wheeler')}
-                  {driverPhone ? ` · ${driverPhone}` : ''}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.driverName}>Finding a rider for you…</Text>
-                <Text style={styles.driverMeta}>
-                  We&apos;ll share rider details as soon as one accepts.
-                </Text>
-              </>
-            )}
-          </View>
-          <Pressable
-            style={[styles.callBtn, !driverPhone && styles.callBtnDisabled]}
-            onPress={onCallDriver}
-            hitSlop={10}
-          >
-            <PhoneIcon />
-          </Pressable>
-        </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                {assignedDriver ? (
+                  <>
+                    <Text style={styles.driverName} numberOfLines={1}>
+                      {assignedDriver.name || 'Delivery partner'} · Delivery partner
+                    </Text>
+                    <Text style={styles.driverMeta} numberOfLines={1}>
+                      {(assignedDriver.vehicle || 'Two-wheeler')}
+                      {driverPhone ? ` · ${driverPhone}` : ''}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.driverName}>Finding a rider for you…</Text>
+                    <Text style={styles.driverMeta}>
+                      We&apos;ll share rider details as soon as one accepts.
+                    </Text>
+                  </>
+                )}
+              </View>
+              <Pressable
+                style={[styles.callBtn, !driverPhone && styles.callBtnDisabled]}
+                onPress={onCallDriver}
+                hitSlop={10}
+              >
+                <PhoneIcon />
+              </Pressable>
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.addrBox}>
           <Text style={styles.addrLabel}>Delivering to</Text>
