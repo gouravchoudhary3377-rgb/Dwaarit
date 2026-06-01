@@ -303,7 +303,7 @@ export default function Profile() {
             iconColor="#2E7D32"
             label="Saved Addresses"
             hint="Manage delivery locations"
-            onPress={() => notReady('Saved Addresses')}
+            onPress={() => router.push('/location')}
           />
           <MenuRow
             icon={IC.wallet('#5C6BC0')}

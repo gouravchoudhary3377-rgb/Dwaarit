@@ -77,7 +77,7 @@ const TILE_BG = [
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   const cartCount = useCart((s) => s.lines.reduce((a, b) => a + b.quantity, 0));
   const activeAddress = useAddressStore((s) =>
     s.activeId ? s.addresses.find((a) => a.id === s.activeId) ?? null : null,
@@ -265,7 +265,12 @@ export default function Home() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* --- Sticky top: location + cart --- */}
       <View style={styles.topBar}>
-        <Pressable style={styles.locWrap} hitSlop={8}>
+        <Pressable
+          style={styles.locWrap}
+          hitSlop={8}
+          onPress={() => router.push('/location')}
+          testID="home-location-chip"
+        >
           <View style={styles.boltChip}>
             <BoltIcon />
             <Text style={styles.boltText}>12 min</Text>
@@ -274,12 +279,14 @@ export default function Home() {
             <View style={styles.locTitleRow}>
               <PinIcon />
               <Text style={styles.locTitle} numberOfLines={1}>
-                Home
+                {activeAddress ? displayLabel(activeAddress) : 'Set delivery address'}
               </Text>
               <ChevronDown />
             </View>
             <Text style={styles.locSub} numberOfLines={1}>
-              Hi {user?.name?.split(' ')[0] ?? 'there'} · Delivering to your address
+              {activeAddress
+                ? `${shortAddress(activeAddress)} · 5-min delivery`
+                : 'Tap to choose where to deliver'}
             </Text>
           </View>
         </Pressable>

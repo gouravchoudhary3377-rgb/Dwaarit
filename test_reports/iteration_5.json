@@ -1,0 +1,36 @@
+{
+  "summary": "All 3 scoped Address Book wiring fixes from iteration_4 are VERIFIED WORKING end-to-end. (1) Home header chip with NO saved address shows 'Set delivery address' + 'Tap to choose where to deliver' and tap navigates to /location (testID='home-location-chip'). (2) After saving an address via /location manual flow, the chip on /home updates to 'Home' + '123 MG Road, Indiranagar, Bengaluru · 5-min delivery'. (3) Profile -> 'Saved Addresses' row now router.push('/location') (no notReady toast). (4) Checkout renders saved addresses as radio cards with testID='address-card-<id>', default selection comes from store activeId, and 'Add new address' (testID='add-new-address-btn') navigates to /location?from=checkout. (5) Place Order POSTs /api/orders with payment_method='cod' and address {full_name, phone, line1, line2, city, pincode} from the selected saved address — backend returns 200 and frontend navigates to /order-success?id=ord_xxx&total=xxx. (6) Empty state at checkout shows 'No saved addresses yet', renders 0 address-cards, place-order-btn aria-disabled=true, and clicking does NOT navigate (Place Order properly gated by canPlace). Backend health was not retested per scope (frontend-only). One non-blocking console warning persists from prior iterations: 'props.pointerEvents is deprecated. Use style.pointerEvents'.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "global",
+        "issues": [
+          "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents' (carry-over from iteration_4, non-blocking)."
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_5.json",
+    "/app/test_reports/iteration_4.json"
+  ],
+  "action_items": [
+    "Optional: silence the lingering 'props.pointerEvents is deprecated' warning by switching any remaining pointerEvents prop usages to style.pointerEvents in shared UI components (carry-over)."
+  ],
+  "critical_code_review_comments": [
+    "home.tsx now correctly reads activeAddress from useAddressStore (lines 82-84) and renders displayLabel/shortAddress with a '· 5-min delivery' suffix; falls back to 'Set delivery address'/'Tap to choose where to deliver' when null. The Pressable wraps with testID='home-location-chip' and onPress={() => router.push('/location')}. Wiring matches spec.",
+    "checkout.tsx is fully rewired: imports useAddressStore, renders saved addresses as radio cards (testID=`address-card-${a.id}`), chooseAddress() calls setActive(id) on store, 'Add new address' card uses testID='add-new-address-btn' and routes to '/location?from=checkout'. POST payload at lines 116-134 sends the exact AddressIn shape (full_name, phone, line1, line2(default ''), city, pincode) and payment_method='cod'. canPlace correctly gates on selection + cart length + !placing.",
+    "profile.tsx:306 now does router.push('/location') on the 'Saved Addresses' MenuRow — no longer notReady().",
+    "Minor: upsert() in addressStore prepends new addresses but does NOT change activeId when one is already set. That is correct per design (preserves user's current delivery selection when adding additional ones); newly-added address simply appears at the top of the checkout list."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "not retested (out of scope)", "frontend": "100% on the 6 scoped scenarios" },
+  "seed_data_creation": "Created two transient test addresses via /location UI ('Demo Customer / 123 MG Road, Indiranagar, Bengaluru, 560038' and 'Demo Two / 55 Brigade Rd, Central, Bengaluru, 560001') and placed two COD orders against /api/orders (200 OK; e.g. ord_7915552ef346, total ₹4.99). Data lives in the demo user's account.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration_5 confirms address book wiring fixes are complete. If next iteration touches addresses, note: (a) addressStore.upsert intentionally keeps the existing activeId when adding additional addresses, so the newly-added address card on /checkout will appear at top but NOT auto-selected — selection still flows from store.activeId. (b) Storage on web uses AsyncStorage backed by IndexedDB (not localStorage), so any state-priming test scripts must use the /location UI rather than localStorage shims. (c) Saved data persists across reloads via storage hydrate in addressStore. Credentials: demo@dwaarit.com / Demo@123."
+}
