@@ -42,7 +42,14 @@ export default function OrderSuccess() {
       </View>
 
       <View style={[styles.actions, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <PrimaryButton title="Track order" onPress={() => router.replace('/(tabs)/orders')} />
+        <PrimaryButton
+          title="Track order"
+          onPress={() =>
+            id
+              ? router.replace({ pathname: '/order/[id]', params: { id: String(id) } })
+              : router.replace('/(tabs)/orders')
+          }
+        />
         <PrimaryButton title="Back to home" variant="ghost" onPress={() => router.replace('/(tabs)/home')} />
       </View>
     </View>
