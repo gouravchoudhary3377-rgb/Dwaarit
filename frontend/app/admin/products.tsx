@@ -21,6 +21,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { TextField } from '@/src/components/ui/TextField';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 type FormState = {
   product_id?: string;
@@ -139,7 +140,7 @@ export default function AdminProducts() {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.cat}>{item.category} · {item.unit}</Text>
-                <Text style={styles.price}>${item.price.toFixed(2)} · stock {item.stock}</Text>
+                <Text style={styles.price}>{formatINR(item.price)} · stock {item.stock}</Text>
               </View>
               <View style={{ gap: 6 }}>
                 <Pressable onPress={() => openEdit(item)} style={[styles.smallBtn, styles.smallEdit]}>

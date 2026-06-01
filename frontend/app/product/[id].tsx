@@ -18,6 +18,7 @@ import { api, Product } from '@/src/api/client';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { useCart } from '@/src/store/cartStore';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 function BackArrow() {
   return (
@@ -186,7 +187,7 @@ export default function ProductDetail() {
           <Text style={styles.category}>{product.category}</Text>
           <Text style={styles.name}>{product.name}</Text>
           <View style={styles.row}>
-            <Text style={styles.price}>${product.price.toFixed(2)}</Text>
+            <Text style={styles.price}>{formatINR(product.price)}</Text>
             <Text style={styles.unit}>/ {product.unit}</Text>
           </View>
 
@@ -257,7 +258,7 @@ export default function ProductDetail() {
                     <Text style={styles.relName} numberOfLines={2}>
                       {p.name}
                     </Text>
-                    <Text style={styles.relPrice}>${p.price.toFixed(2)}</Text>
+                    <Text style={styles.relPrice}>{formatINR(p.price)}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -305,8 +306,8 @@ export default function ProductDetail() {
               outOfStock
                 ? 'Out of stock'
                 : inCartQty > 0
-                ? `Add ${effectiveQty} more • $${(product.price * effectiveQty).toFixed(2)}`
-                : `Add ${effectiveQty} • $${(product.price * effectiveQty).toFixed(2)}`
+                ? `Add ${effectiveQty} more • ${formatINR(product.price * effectiveQty)}`
+                : `Add ${effectiveQty} • ${formatINR(product.price * effectiveQty)}`
             }
             onPress={handleAdd}
             disabled={outOfStock}

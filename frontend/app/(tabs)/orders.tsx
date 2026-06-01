@@ -8,6 +8,8 @@ import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge } from '@/src/components/StatusBadge';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
+
+export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);

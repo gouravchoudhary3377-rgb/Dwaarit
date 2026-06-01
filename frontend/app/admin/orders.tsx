@@ -21,6 +21,7 @@ import { Status } from '@/src/components/StatusBadge';
 import { useAdminAlarm } from '@/src/hooks/useAdminAlarm';
 import { useMuteToggle } from '@/src/hooks/useMuteToggle';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 // ---- Order status flow ----
 const NEXT: Record<Status, Status | null> = {
@@ -167,7 +168,7 @@ function OrderCard({
           </Text>
         </View>
         <View style={styles.totalBox}>
-          <Text style={styles.totalAmt}>${order.total.toFixed(2)}</Text>
+          <Text style={styles.totalAmt}>{formatINR(order.total)}</Text>
           <Text style={styles.totalMeta}>{itemCount} item{itemCount !== 1 ? 's' : ''} · {order.payment_method.toUpperCase()}</Text>
         </View>
       </View>

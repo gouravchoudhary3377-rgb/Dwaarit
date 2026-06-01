@@ -9,6 +9,7 @@ import { api, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge, Status } from '@/src/components/StatusBadge';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
+import { formatINR } from '@/src/utils/format';
 
 function BackArrow() {
   return (
@@ -179,10 +180,10 @@ export default function OrderDetail() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemName} numberOfLines={2}>{it.name}</Text>
                   <Text style={styles.itemMeta}>
-                    {it.quantity} × ${it.price.toFixed(2)} · {it.unit}
+                    {it.quantity} × {formatINR(it.price)} · {it.unit}
                   </Text>
                 </View>
-                <Text style={styles.itemSubtotal}>${it.subtotal.toFixed(2)}</Text>
+                <Text style={styles.itemSubtotal}>{formatINR(it.subtotal)}</Text>
               </View>
             ))}
           </View>
@@ -213,16 +214,16 @@ export default function OrderDetail() {
           <Text style={styles.sectionTitle}>Payment summary</Text>
           <View style={styles.payRow}>
             <Text style={styles.payK}>Subtotal</Text>
-            <Text style={styles.payV}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.payV}>{formatINR(subtotal)}</Text>
           </View>
           <View style={styles.payRow}>
             <Text style={styles.payK}>Delivery fee</Text>
-            <Text style={styles.payVfree}>{deliveryFee === 0 ? 'FREE' : `$${deliveryFee.toFixed(2)}`}</Text>
+            <Text style={styles.payVfree}>{deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee)}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.payRow}>
             <Text style={styles.totalK}>Total</Text>
-            <Text style={styles.totalV}>${order.total.toFixed(2)}</Text>
+            <Text style={styles.totalV}>{formatINR(order.total)}</Text>
           </View>
           <View style={styles.payMethodRow}>
             <Text style={styles.payMethodLabel}>Payment method</Text>
