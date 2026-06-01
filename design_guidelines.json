@@ -1,0 +1,94 @@
+{
+  "theme": "Light",
+  "archetype": "Fast-Commerce Vibrant Organic",
+  "brand_colors": {
+    "primary": "#FF5A00",
+    "background": "#FFFFFF",
+    "surface": "#F7F7F7",
+    "text_primary": "#1A1512",
+    "text_secondary": "#736F6D",
+    "border": "#EAEAEA",
+    "error": "#FF3B30",
+    "success": "#34C759"
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Outfit, sans-serif",
+      "weights": ["600", "700"],
+      "tracking": "tight"
+    },
+    "body": {
+      "font_family": "Figtree, sans-serif",
+      "weights": ["400", "500"]
+    },
+    "sizes": {
+      "h1": "text-4xl (32px)",
+      "h2": "text-2xl (24px)",
+      "h3": "text-xl (20px)",
+      "body_lg": "text-lg (18px)",
+      "body": "text-base (16px)",
+      "caption": "text-sm (14px)"
+    }
+  },
+  "spacing_and_layout": {
+    "global_padding": "24px",
+    "card_radius": "24px",
+    "button_radius": "9999px",
+    "input_radius": "16px",
+    "card_shadow": "0px 12px 32px rgba(0, 0, 0, 0.06)",
+    "mobile_bottom_nav_height": "85px"
+  },
+  "component_guidelines": {
+    "buttons": "Primary buttons must be pure #FF5A00 with #FFFFFF text. Use pill shape (rounded-full). Height minimum 56px for tap targets.",
+    "product_cards": "Bold, round product cards with drop shadow. White background, image takes up top 60% with full bleed. Generous padding for text area below.",
+    "bottom_nav": "Simple, uncluttered UI. White background, orange active state. Use custom abstract geometric SVG icons, NEVER generic shopping bags or standard houses.",
+    "inputs": "Height 56px, background #F7F7F7, borderless by default. Add 2px #FF5A00 border on focus.",
+    "admin_dashboard": "Use 'Control Room' dense grid strategy. Minimal shadows, 1px borders (#EAEAEA). Sidebar navigation. Use standard web UI components heavily customized to match the typography and #FF5A00 accent color."
+  },
+  "custom_icon_instructions": {
+    "home": "Do not use a generic house. Use nested arches or an abstract doorway geometry (using react-native-svg or standard svg for web).",
+    "cart": "Do not use a shopping bag or standard cart. Use a dynamic sweeping arc with a geometric cargo block or a minimalist stylized basket weave.",
+    "orders": "Do not use a generic receipt icon. Use a staggered timeline (dots and lines) or a layered abstract log.",
+    "profile": "Do not use a generic person silhouette. Use a minimal floating identity orbit or abstract asymmetric portrait shapes."
+  },
+  "image_urls": [
+    {
+      "category": "onboarding_hero",
+      "url": "https://static.prod-images.emergentagent.com/jobs/d5b7ae71-1d7e-49bf-9f75-5217a7c2ed3a/images/651a033948e12eb241eec5c37634afb9dc8ffde2c62f243b76f9c615026cecee.png",
+      "description": "Abstract 3D floating grocery items for login/signup or welcome screen."
+    },
+    {
+      "category": "icon_reference",
+      "url": "https://static.prod-images.emergentagent.com/jobs/d5b7ae71-1d7e-49bf-9f75-5217a7c2ed3a/images/c1bf4f3b53ea37e7c7ad9064d25cb1e46a8c8978bf93f6c6a059143c656dff67.png",
+      "description": "Reference for abstract geometric bottom nav icons."
+    },
+    {
+      "category": "product_mock_orange",
+      "url": "https://images.pexels.com/photos/18452311/pexels-photo-18452311.jpeg",
+      "description": "Fresh Oranges for product list mock data."
+    },
+    {
+      "category": "product_mock_vegetables",
+      "url": "https://images.pexels.com/photos/7223295/pexels-photo-7223295.jpeg",
+      "description": "Fresh sliced vegetables flatlay for product list mock data."
+    },
+    {
+      "category": "product_mock_bread",
+      "url": "https://images.pexels.com/photos/30273276/pexels-photo-30273276.jpeg",
+      "description": "Artisan bread basket for product list mock data."
+    }
+  ],
+  "accessibility_and_testing": {
+    "data_testid": "MANDATORY on all interactive elements (buttons, inputs, touchables, cart increment/decrement).",
+    "contrast": "Ensure #FF5A00 text is only used on #FFFFFF backgrounds, or use white text on #FF5A00 backgrounds."
+  },
+  "instructions_to_main_agent": [
+    "You are building a React Native Expo hybrid app.",
+    "Build the mobile application screens: Login/Signup, Home (Categories + Products), Cart, Checkout, Order Confirmation, Orders List, Profile.",
+    "Build a separate Admin Web Dashboard (using React/Next or Web UI) for Product CRUD and Order Management.",
+    "MANDATORY: Use pure Orange (#FF5A00) and White as the primary UI colors, as explicitly requested by the user.",
+    "MANDATORY: Do NOT use standard icons (like FontAwesome shopping-bag) for the bottom nav. You must use SVG primitives to draw custom geometric shapes based on the 'custom_icon_instructions'.",
+    "MANDATORY: Ensure generous spacing (e.g., gap-4 or gap-6) and use bold, rounded cards (border-radius: 24px) with soft drop shadows for product listings.",
+    "MANDATORY: Add 'data-testid' to all core functionalities to ensure automated tests pass."
+  ]
+}
