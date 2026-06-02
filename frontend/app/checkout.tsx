@@ -98,8 +98,21 @@ type CreateOrderResponse = {
   delivery_fee: number;
   wallet_applied: number;
   payable: number;
+  discount: number;
+  coupon_code?: string | null;
   payment_method: PayMethod;
   payment_status: string;
+};
+
+type ValidatedCoupon = {
+  code: string;
+  title: string;
+  description: string;
+  discount_type: 'flat' | 'percent';
+  value: number;
+  discount: number;
+  subtotal: number;
+  final: number;
 };
 
 export default function Checkout() {
@@ -121,6 +134,14 @@ export default function Checkout() {
   const [useWallet, setUseWallet] = useState(false);
   const [walletBal, setWalletBal] = useState<number>(0);
   const [rzp, setRzp] = useState<RzpSession | null>(null);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState<ValidatedCoupon | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponErr, setCouponErr] = useState<string | null>(null);
+  const [offers, setOffers] = useState<ValidatedCoupon[] | null>(null);
+  const [showOffers, setShowOffers] = useState(false);
 
   // Load wallet balance once
   useEffect(() => {
@@ -153,7 +174,35 @@ export default function Checkout() {
   );
 
   const deliveryFee = itemsTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const totalBeforeWallet = +(itemsTotal + deliveryFee).toFixed(2);
+
+  // If coupon's subtotal no longer matches the cart subtotal, auto-revalidate or clear
+  useEffect(() => {
+    if (!coupon || !token) return;
+    if (Math.abs(coupon.subtotal - itemsTotal) < 0.01) return;
+    // Cart changed - try to re-validate the coupon silently
+    let cancelled = false;
+    (async () => {
+      try {
+        const v = await api.post<ValidatedCoupon>(
+          '/coupons/validate',
+          { code: coupon.code, subtotal: itemsTotal },
+          token,
+        );
+        if (!cancelled) setCoupon(v);
+      } catch {
+        if (!cancelled) {
+          setCoupon(null);
+          setCouponErr('Coupon removed - cart changed');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [itemsTotal, coupon, token]);
+
+  const discount = coupon ? coupon.discount : 0;
+  const totalBeforeWallet = +Math.max(itemsTotal + deliveryFee - discount, 0).toFixed(2);
 
   // Compute wallet applied / payable preview
   const { walletApplied, payable } = useMemo(() => {

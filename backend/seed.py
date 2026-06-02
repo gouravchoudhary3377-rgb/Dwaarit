@@ -285,3 +285,65 @@ async def seed_categories() -> None:
         docs.append(Category(slug=slug, name=d["name"], icon=d["icon"], gallery=d["gallery"], is_default=True).dict())
     await db.categories.insert_many(docs)
     log.info("Seeded %d default categories.", len(docs))
+
+
+
+async def seed_coupons() -> None:
+    """Seed default Blinkit-style promo codes."""
+    from datetime import datetime, timedelta, timezone
+
+    if await db.coupons.count_documents({}) > 0:
+        return
+    now = datetime.now(timezone.utc)
+    defaults = [
+        {
+            "code": "WELCOME50",
+            "title": "Flat ₹50 OFF on your first order",
+            "description": "Use code WELCOME50 to save ₹50 on orders above ₹199.",
+            "discount_type": "flat",
+            "value": 50.0,
+            "min_order_value": 199.0,
+            "max_discount": None,
+            "usage_limit": None,
+            "per_user_limit": 1,
+            "active": True,
+            "expires_at": now + timedelta(days=180),
+            "created_at": now,
+            "updated_at": now,
+            "used_count": 0,
+        },
+        {
+            "code": "SAVE10",
+            "title": "10% OFF up to ₹100",
+            "description": "Get 10% off on orders above ₹299. Max discount ₹100.",
+            "discount_type": "percent",
+            "value": 10.0,
+            "min_order_value": 299.0,
+            "max_discount": 100.0,
+            "usage_limit": None,
+            "per_user_limit": None,
+            "active": True,
+            "expires_at": now + timedelta(days=90),
+            "created_at": now,
+            "updated_at": now,
+            "used_count": 0,
+        },
+        {
+            "code": "FRESH75",
+            "title": "₹75 OFF on orders above ₹499",
+            "description": "Fresh groceries, fresher savings. ₹75 off on orders above ₹499.",
+            "discount_type": "flat",
+            "value": 75.0,
+            "min_order_value": 499.0,
+            "max_discount": None,
+            "usage_limit": None,
+            "per_user_limit": None,
+            "active": True,
+            "expires_at": now + timedelta(days=60),
+            "created_at": now,
+            "updated_at": now,
+            "used_count": 0,
+        },
+    ]
+    await db.coupons.insert_many(defaults)
+    log.info("Seeded %d default coupons.", len(defaults))

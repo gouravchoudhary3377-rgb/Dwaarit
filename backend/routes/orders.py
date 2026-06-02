@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from database import db
 from models import OrderIn, OrderStatusUpdate
+from routes.coupons import calculate_discount, _check_eligibility, _normalize_code
 from security import get_current_user, require_admin
 
 router = APIRouter(tags=["orders"])
@@ -70,7 +71,24 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
             "subtotal": line,
         })
     delivery_fee = 0.0 if subtotal >= FREE_DELIVERY_THRESHOLD else DELIVERY_FEE
-    total_before_wallet = round(subtotal + delivery_fee, 2)
+
+    # ---- Coupon / Promo code ----
+    coupon_code: str | None = None
+    coupon_title: str = ""
+    discount = 0.0
+    if body.coupon_code:
+        code = _normalize_code(body.coupon_code)
+        coupon = await db.coupons.find_one({"code": code}, {"_id": 0})
+        ok, reason = await _check_eligibility(coupon, subtotal, user["user_id"])
+        if not ok:
+            raise HTTPException(400, reason)
+        discount = calculate_discount(coupon, subtotal)
+        coupon_code = coupon["code"]
+        coupon_title = coupon.get("title", "")
+
+    total_before_wallet = round(subtotal + delivery_fee - discount, 2)
+    if total_before_wallet < 0:
+        total_before_wallet = 0.0
 
     wallet_applied = 0.0
     if body.use_wallet:
@@ -93,6 +111,9 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
         "items": items,
         "subtotal": round(subtotal, 2),
         "delivery_fee": delivery_fee,
+        "coupon_code": coupon_code,
+        "coupon_title": coupon_title,
+        "discount": round(discount, 2),
         "wallet_applied": wallet_applied,
         "payable": payable,
         "total": total_before_wallet,
@@ -105,6 +126,11 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
         "updated_at": datetime.now(timezone.utc),
     }
     await db.orders.insert_one(doc)
+    if coupon_code:
+        # Atomic usage increment for global usage_limit accounting
+        await db.coupons.update_one(
+            {"code": coupon_code}, {"$inc": {"used_count": 1}}
+        )
     if wallet_applied > 0:
         await _wallet_debit(user["user_id"], wallet_applied, f"Used on order {order_id}", order_id)
     doc.pop("_id", None)

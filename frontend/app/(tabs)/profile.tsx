@@ -308,7 +308,7 @@ export default function Profile() {
             iconColor={colors.primary}
             label="My Orders"
             hint={stats.orders ? `${stats.orders} order${stats.orders === 1 ? '' : 's'}` : 'No orders yet'}
-            onPress={() => router.push('/(tabs)/orders')}
+            onPress={() => router.push('/orders')}
           />
           <MenuRow
             icon={IC.pin('#2E7D32')}

@@ -48,7 +48,7 @@ export default function OrderSuccess() {
           onPress={() =>
             id
               ? router.replace({ pathname: '/order/[id]', params: { id: String(id) } })
-              : router.replace('/(tabs)/orders')
+              : router.replace('/orders')
           }
         />
         <PrimaryButton title="Back to home" variant="ghost" onPress={() => router.replace('/(tabs)/home')} />

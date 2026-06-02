@@ -155,6 +155,7 @@ class OrderIn(BaseModel):
     payment_method: PaymentMethodLiteral = "cod"
     notes: str = ""
     use_wallet: bool = False  # apply wallet balance toward total
+    coupon_code: Optional[str] = None  # Blinkit-style promo code
 
 
 OrderStatus = Literal["pending", "accepted", "out_for_delivery", "delivered", "cancelled"]
@@ -302,3 +303,39 @@ class RiderApplicationIn(BaseModel):
     city: str
     vehicle_type: VehicleType = "bike"
     note: str = ""
+
+
+# ---------- Coupons / Promo Codes (Blinkit-style) ----------
+CouponType = Literal["percent", "flat"]
+
+
+class CouponIn(BaseModel):
+    code: str = Field(min_length=2, max_length=24)
+    title: str = ""
+    description: str = ""
+    discount_type: CouponType = "percent"
+    value: float = Field(gt=0)            # 10 = 10% or ₹10 depending on type
+    min_order_value: float = 0.0
+    max_discount: Optional[float] = None  # only for percent
+    usage_limit: Optional[int] = None     # global total
+    per_user_limit: Optional[int] = 1
+    active: bool = True
+    expires_at: Optional[datetime] = None
+
+
+class CouponUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    discount_type: Optional[CouponType] = None
+    value: Optional[float] = None
+    min_order_value: Optional[float] = None
+    max_discount: Optional[float] = None
+    usage_limit: Optional[int] = None
+    per_user_limit: Optional[int] = None
+    active: Optional[bool] = None
+    expires_at: Optional[datetime] = None
+
+
+class CouponValidateIn(BaseModel):
+    code: str
+    subtotal: float = Field(ge=0)

@@ -45,6 +45,18 @@ export function CartIcon({ color, size = 26 }: IconProps) {
   );
 }
 
+// Four squared tiles forming an abstract category grid.
+export function CategoriesIcon({ color, size = 26 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      <Rect x="5" y="5" width="9" height="9" rx="2" stroke={color} strokeWidth={2.4} />
+      <Rect x="18" y="5" width="9" height="9" rx="2" stroke={color} strokeWidth={2.4} />
+      <Rect x="5" y="18" width="9" height="9" rx="2" stroke={color} strokeWidth={2.4} />
+      <Circle cx="22.5" cy="22.5" r="4.5" stroke={color} strokeWidth={2.4} />
+    </Svg>
+  );
+}
+
 // Staggered timeline dots+lines for order tracking.
 export function OrdersIcon({ color, size = 26 }: IconProps) {
   return (

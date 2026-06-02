@@ -2,7 +2,7 @@ import React from 'react';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Tabs, Redirect } from 'expo-router';
 
-import { CartIcon, HomeIcon, OrdersIcon, ProfileIcon } from '@/src/components/icons/TabIcons';
+import { CartIcon, CategoriesIcon, HomeIcon, ProfileIcon } from '@/src/components/icons/TabIcons';
 import { colors, typography } from '@/src/theme';
 import { useCart } from '@/src/store/cartStore';
 import { useAuth } from '@/src/context/AuthContext';
@@ -55,6 +55,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="categories"
+        options={{
+          title: 'Categories',
+          tabBarIcon: ({ color }) => <CategoriesIcon color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="cart"
         options={{
           title: 'Cart',
@@ -64,13 +71,6 @@ export default function TabsLayout() {
               <Badge count={count} />
             </View>
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: 'Orders',
-          tabBarIcon: ({ color }) => <OrdersIcon color={color} />,
         }}
       />
       <Tabs.Screen

@@ -106,6 +106,7 @@ export default function AdminLayout() {
       {/* Hidden screens — reachable only via router.push, not via tab bar */}
       <Tabs.Screen name="add-product" options={{ href: null }} />
       <Tabs.Screen name="users" options={{ href: null }} />
+      <Tabs.Screen name="coupons" options={{ href: null }} />
       <Tabs.Screen name="wallet-adjustments" options={{ href: null }} />
       <Tabs.Screen name="ticket/[id]" options={{ href: null }} />
     </Tabs>

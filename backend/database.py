@@ -47,3 +47,8 @@ async def ensure_indexes() -> None:
     await db.login_history.create_index([("user_id", 1), ("created_at", -1)])
     await db.driver_locations.create_index("driver_id", unique=True)
     await db.driver_earnings.create_index([("driver_id", 1), ("created_at", -1)])
+
+    # ---- Phase 9: Coupons ----
+    await db.coupons.create_index("code", unique=True)
+    await db.coupons.create_index("active")
+    await db.coupons.create_index("expires_at")
