@@ -38,7 +38,21 @@ async def get_product(product_id: str):
 
 @router.post("/admin/products", response_model=Product)
 async def admin_create_product(body: ProductIn, _: dict = Depends(require_admin)):
-    p = Product(**body.dict())
+    data = body.dict()
+    # Keep `price` and `selling_price` in sync for legacy/back-compat
+    if data.get("selling_price") is None and data.get("price") is not None:
+        data["selling_price"] = data["price"]
+    if data.get("selling_price") is not None:
+        data["price"] = data["selling_price"]
+    if data.get("mrp") is None:
+        data["mrp"] = data.get("price")
+    # Auto-compute discount percent if MRP > selling price
+    try:
+        if data.get("mrp") and data.get("selling_price") and data["mrp"] > data["selling_price"]:
+            data["discount_percent"] = int(round((1 - data["selling_price"] / data["mrp"]) * 100))
+    except Exception:
+        pass
+    p = Product(**data)
     await db.products.insert_one(p.dict())
     return p
 
@@ -50,6 +64,17 @@ async def admin_update_product(
     upd = {k: v for k, v in body.dict().items() if v is not None}
     if not upd:
         raise HTTPException(400, "No fields to update")
+    # Sync price <-> selling_price
+    if "selling_price" in upd:
+        upd["price"] = upd["selling_price"]
+    elif "price" in upd:
+        upd["selling_price"] = upd["price"]
+    # Auto-discount
+    try:
+        if upd.get("mrp") and upd.get("selling_price") and upd["mrp"] > upd["selling_price"]:
+            upd["discount_percent"] = int(round((1 - upd["selling_price"] / upd["mrp"]) * 100))
+    except Exception:
+        pass
     res = await db.products.update_one({"product_id": product_id}, {"$set": upd})
     if res.matched_count == 0:
         raise HTTPException(404, "Product not found")

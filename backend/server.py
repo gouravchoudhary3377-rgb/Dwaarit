@@ -14,6 +14,7 @@ from database import client, ensure_indexes
 from routes.addresses import router as addresses_router
 from routes.admin import router as admin_router
 from routes.auth import router as auth_router
+from routes.banners import router as banners_router
 from routes.categories import router as categories_router
 from routes.coupons import router as coupons_router
 from routes.drivers import router as drivers_router
@@ -50,6 +51,7 @@ api.include_router(payments_router)
 api.include_router(support_router)
 api.include_router(store_router)
 api.include_router(coupons_router)
+api.include_router(banners_router)
 
 
 @api.get("/")

@@ -66,6 +66,8 @@ class Product(BaseModel):
     stock: int = 100
     # Blinkit-style merchandising fields (optional)
     mrp: Optional[float] = None
+    selling_price: Optional[float] = None  # price after discount displayed on storefront
+    self_price: Optional[float] = None     # cost price, super_admin only
     discount_percent: Optional[int] = None
     delivery_eta_min: Optional[int] = 12
     rating: Optional[float] = None
@@ -82,6 +84,8 @@ class ProductIn(BaseModel):
     image_url: str = ""
     stock: int = 100
     mrp: Optional[float] = None
+    selling_price: Optional[float] = None
+    self_price: Optional[float] = None
     discount_percent: Optional[int] = None
     delivery_eta_min: Optional[int] = 12
 
@@ -95,6 +99,8 @@ class ProductUpdate(BaseModel):
     image_url: Optional[str] = None
     stock: Optional[int] = None
     mrp: Optional[float] = None
+    selling_price: Optional[float] = None
+    self_price: Optional[float] = None
     discount_percent: Optional[int] = None
     delivery_eta_min: Optional[int] = None
 
@@ -339,3 +345,25 @@ class CouponUpdate(BaseModel):
 class CouponValidateIn(BaseModel):
     code: str
     subtotal: float = Field(ge=0)
+
+
+# ---------- Banners (Admin Carousel) ----------
+BannerMediaType = Literal["image", "video"]
+
+
+class BannerIn(BaseModel):
+    title: str = ""
+    media_type: BannerMediaType = "image"
+    media_url: str = ""           # base64 data URL for image, or remote URL for video
+    link_url: str = ""            # optional deep-link / category
+    order: int = 0
+    active: bool = True
+
+
+class BannerUpdate(BaseModel):
+    title: Optional[str] = None
+    media_type: Optional[BannerMediaType] = None
+    media_url: Optional[str] = None
+    link_url: Optional[str] = None
+    order: Optional[int] = None
+    active: Optional[bool] = None
