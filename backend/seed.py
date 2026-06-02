@@ -100,6 +100,50 @@ async def seed_users_and_products() -> None:
         await db.products.insert_many(docs)
         log.info("Seeded %d products.", len(docs))
 
+    # Blinkit-style merchandising backfill: ensure every product has an MRP,
+    # discount %, and delivery ETA so badges render in the UI. We only fill
+    # missing fields — never overwrite admin-curated values.
+    await _backfill_merchandising_fields()
+
+
+async def _backfill_merchandising_fields() -> None:
+    """One-time-ish backfill of mrp/discount_percent/delivery_eta_min.
+
+    Strategy: for each product missing these fields, derive a believable
+    MRP that is 8–20% above the selling price (deterministic on product_id
+    so values are stable across restarts).
+    """
+    import hashlib
+
+    cursor = db.products.find({}, {"_id": 0, "product_id": 1, "price": 1,
+                                    "mrp": 1, "discount_percent": 1,
+                                    "delivery_eta_min": 1})
+    async for doc in cursor:
+        updates: dict = {}
+        price = float(doc.get("price") or 0)
+        has_mrp = doc.get("mrp") is not None
+        has_pct = doc.get("discount_percent") is not None
+        has_eta = doc.get("delivery_eta_min") is not None
+
+        if price > 0 and (not has_mrp or not has_pct):
+            # 8 .. 20 % off, deterministic per product
+            seed = int(hashlib.md5(doc["product_id"].encode()).hexdigest()[:4], 16)
+            pct = 8 + (seed % 13)  # 8..20
+            mrp = round(price / (1 - pct / 100), 2)
+            if not has_mrp:
+                updates["mrp"] = mrp
+            if not has_pct:
+                updates["discount_percent"] = pct
+
+        if not has_eta:
+            updates["delivery_eta_min"] = 12
+
+        if updates:
+            await db.products.update_one(
+                {"product_id": doc["product_id"]}, {"$set": updates}
+            )
+    log.info("Merchandising backfill complete.")
+
 
 
 async def seed_store_manager() -> None:

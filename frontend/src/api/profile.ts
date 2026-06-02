@@ -1,51 +1,21 @@
 // Profile, wallet, wishlist API helpers.
 import { api } from './client';
+import type {
+  WalletSummary,
+  WishlistItem,
+  ServerAddress,
+  ServerAddressIn,
+} from './types';
 
-export type WalletTxn = {
-  txn_id: string;
-  user_id: string;
-  type: 'credit' | 'debit' | 'refund' | 'topup';
-  amount: number;
-  note?: string;
-  created_at: string;
-};
-
-export type WalletSummary = { balance: number; transactions: WalletTxn[] };
-
-export type WishlistItem = {
-  product_id: string;
-  name: string;
-  description: string;
-  price: number;
-  unit: string;
-  category: string;
-  image_url: string;
-  stock: number;
-  added_at?: string;
-};
-
-export type ServerAddress = {
-  address_id: string;
-  user_id: string;
-  label: 'home' | 'work' | 'other';
-  custom_label?: string;
-  full_name: string;
-  phone: string;
-  line1: string;
-  line2: string;
-  landmark: string;
-  city: string;
-  pincode: string;
-  state: string;
-  lat?: number | null;
-  lng?: number | null;
-  is_default: boolean;
-  created_at: string;
-};
-
-export type ServerAddressIn = Omit<ServerAddress, 'address_id' | 'user_id' | 'created_at'> & {
-  custom_label?: string; // not persisted server-side but we keep client copy
-};
+// Re-export the types for back-compat with callers that previously
+// imported them from this module.
+export type {
+  WalletTxn,
+  WalletSummary,
+  WishlistItem,
+  ServerAddress,
+  ServerAddressIn,
+} from './types';
 
 export const profileApi = {
   // Profile

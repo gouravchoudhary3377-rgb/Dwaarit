@@ -270,10 +270,10 @@ export default function ProductDetail() {
       {/* Toast */}
       {toastMsg && (
         <Animated.View
-          pointerEvents="none"
           style={[
             styles.toast,
             {
+              pointerEvents: 'none',
               bottom: insets.bottom + 120,
               opacity: toastAnim,
               transform: [

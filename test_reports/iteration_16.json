@@ -1,0 +1,63 @@
+{
+  "summary": "Phase 8.6 Security Hardening backend tested (29 tests). 24 passed, 2 skipped (deviations), 3 failed (real bug). Brute-force lockout (5 fail in 15min -> 429, correct password also blocked), audit/login_history writes for register+login_success+logout, viewer endpoint pagination/filters/sorting, security summary KPIs, and authZ for unauth/customer/rider/store_manager all PASS. CRITICAL bug: a user with role='admin' (not super_admin) can access /api/admin/audit-logs, /api/admin/login-history, /api/admin/security/summary because security.py._effective_role aliases 'admin' -> 'super_admin'. Two spec deviations: (a) failed login is NOT written to audit_logs (only login_history); (b) PATCH /admin/users/{id}/role does NOT emit audit_logs action='role.change'. Naming deviation: endpoint is /api/auth/signup with audit action 'auth.signup' (spec said 'auth.register'). Phase 8.5 driver-location smoke regression passes.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/admin/audit-logs, /api/admin/login-history, /api/admin/security/summary",
+        "issue": "Role='admin' (regular) gets 200 instead of 403. Root cause: /app/backend/security.py _effective_role() normalises 'admin' -> 'super_admin', so require_super_admin() admits regular admins. This breaks the super_admin/admin distinction the spec calls out explicitly.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/auth/login (failure)",
+        "issue": "Failure path writes login_history (success=false) but does NOT write audit_logs action='auth.login' status='failure'. Spec requires both. Reference: /app/backend/routes/auth.py login handler."
+      },
+      {
+        "endpoint": "PATCH /api/admin/users/{id}/role",
+        "issue": "Does not call audit.log_event(action='role.change'). Spec requires an audit_logs entry on role change. Reference: /app/backend/routes/admin.py update_user_role handler."
+      },
+      {
+        "endpoint": "POST /api/auth/register (spec) vs POST /api/auth/signup (impl)",
+        "issue": "Endpoint name and audit action differ from spec. Impl writes audit_logs action='auth.signup'; spec asked for action='auth.register'. Decide: either rename action+route or update spec wording."
+      },
+      {
+        "endpoint": "PATCH /api/admin/users/{id}/role authZ",
+        "issue": "Role change is gated by require_admin (admin OR super_admin), so a regular 'admin' can promote/demote users. Likely should be super_admin-only — please confirm intent."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase86_security_hardening.py",
+    "/app/test_reports/pytest/phase86_results.xml"
+  ],
+  "action_items": [
+    "Fix security.py: stop aliasing 'admin' -> 'super_admin' inside _effective_role(); require_super_admin must accept ONLY role=='super_admin'. require_admin can continue to accept both.",
+    "In /app/backend/routes/auth.py login handler, on failure ALSO write audit_logs entry via log_event(action='auth.login', status='failure', user_id=None_or_lookup, metadata={'email': email.lower()}) — currently only login_history is written.",
+    "In /app/backend/routes/admin.py update_user_role, call audit.log_event(action='role.change', status='success', actor_user_id=current_user.user_id, target_user_id=uid, metadata={'old_role':..., 'new_role':...}).",
+    "Decide naming: either add a POST /api/auth/register route (alias) writing audit action 'auth.register', or update Phase 8.6 spec to read 'auth.signup'.",
+    "Consider tightening PATCH /api/admin/users/{id}/role to require_super_admin to match the security-tier intent.",
+    "Re-run /app/backend/tests/test_phase86_security_hardening.py after fixes; the 3 failing test_admin_role_403[...] tests and the 2 skipped tests (login-failure audit, role-change audit) should then all PASS."
+  ],
+  "critical_code_review_comments": [
+    "security.py: _effective_role() silently widens require_super_admin's audience to include legacy 'admin' users — security regression risk; must be removed.",
+    "routes/auth.py: failed-login audit gap means SIEM-style queries against audit_logs.auth.login.failure will under-report; only login_history surfaces failures today.",
+    "routes/admin.py: role-change is a high-impact privileged action and MUST be in audit_logs; missing today.",
+    "Phase 8.6 spec uses 'auth.register' but implementation uses 'auth.signup' — align spec/impl to avoid confusion."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase86_security_hardening.py (new pytest suite — 29 tests)"
+  ],
+  "success_rate": {"backend": "82.7% (24/29 passed, 2 skipped as documented deviations, 3 failed = real bugs)", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "Created several TEST_*@dwaarit-test.com users via /api/auth/signup during tests (lockout user, admin-role user, role-change target, other-customer). They are prefixed TEST_ for easy cleanup. One demo order was created on demo@dwaarit.com for the Phase 8.5 smoke test.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Re-run `python -m pytest /app/backend/tests/test_phase86_security_hardening.py -v` after main agent applies the fixes (env var EXPO_PUBLIC_BACKEND_URL must be exported, taken from /app/frontend/.env). Brute-force lockout uses a 15-minute window — the suite already creates a FRESH email per lockout test, so it can be re-run back-to-back safely. The 2 currently-skipped tests will start asserting once main agent wires up the missing audit_logs writes for login-failure and role.change.",
+  "rca_of_issue": "ROOT CAUSE of role=admin -> 200 bug: /app/backend/security.py defines `_effective_role(role)` returning 'super_admin' if role == 'admin', which is then used by require_super_admin's role check. Combined with the seed-time migration that already promoted seed admins to super_admin, the alias is now unnecessary AND actively harmful: any user later set to role='admin' (e.g., via PATCH /api/admin/users/{id}/role with body {'role':'admin'}) silently gains super_admin privileges. REPRODUCTION: (1) login as admin@dwaarit.com, (2) signup a fresh user, (3) PATCH /api/admin/users/{uid}/role to role='admin', (4) login as that user, (5) GET /api/admin/audit-logs -> returns 200 with full audit log. EXPECTED: 403. FIX: in security.py replace `_effective_role` usage in require_super_admin with a strict equality check `if user.get('role') != 'super_admin': raise HTTPException(403)`."
+}

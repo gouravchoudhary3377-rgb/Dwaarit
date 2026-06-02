@@ -263,11 +263,49 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 8.5 backend: GET /api/orders/{id}/driver-location authZ + assigned flag"
-    - "Phase 8.5 frontend: Customer track screen — 'Finding rider…' UI + live driver polling"
+    - "Phase 8.6 backend: Audit log write-side (auth.login/logout/register, password.change, role.change)"
+    - "Phase 8.6 backend: Login history records (success + failure) + brute-force lockout (429 after 5 fails/15min)"
+    - "Phase 8.6 backend: GET /api/admin/audit-logs, /api/admin/login-history, /api/admin/security/summary — super_admin only (admin = 403)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+phase_8_6_backend:
+  - task: "Audit log write-side — auth.login/logout/register + password.change + role.change events"
+    implemented: true
+    working: "NA"
+    file: "backend/audit.py, backend/routes/auth.py, backend/routes/admin.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Successful login writes audit_logs entry with action='auth.login', status='success', user_id, email, ip, user_agent. Failed login writes status='failure'. Registration writes 'auth.register'. Logout writes 'auth.logout'. Role change via PATCH /api/admin/users/{id}/role writes 'role.change'."
+
+  - task: "Login history + brute-force lockout (5 fails/15min => HTTP 429)"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/auth.py, backend/audit.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Every login attempt (success or failure) writes a login_history doc {email, user_id?, success, ip, user_agent, created_at}. After 5 failed attempts within 15 minutes for the same email, the endpoint must return HTTP 429 Too Many Requests instead of 401. A successful login should reset / not trip the lockout."
+
+  - task: "Super-admin audit + login-history viewer endpoints"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/admin.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "GET /api/admin/audit-logs?action=&user_id=&status=&limit=&skip= — paginated reverse-chrono. GET /api/admin/login-history?email=&user_id=&success=&limit=&skip= — paginated reverse-chrono. GET /api/admin/security/summary — KPIs (total_audit_logs, audit_logs_last_24h, failed_logins_last_24h, successful_logins_last_24h, top_failed_login_emails_24h). ALL THREE must be 200 for super_admin (admin@dwaarit.com) and 403 for regular admin / customer / store_manager / rider, 401 for unauth."
 
 phase_8_5_backend:
   - task: "GET /api/orders/{order_id}/driver-location — assigned flag + authZ matrix"

@@ -59,146 +59,25 @@ export const api = {
     request<T>(path, { method: 'DELETE', token }),
 };
 
-export type AuthUser = {
-  user_id: string;
-  email: string;
-  name: string;
-  role: 'customer' | 'admin' | 'super_admin' | 'store_manager' | 'rider';
-  auth_provider: 'password' | 'google';
-  picture?: string | null;
-  mobile?: string | null;
-  mobile_verified?: boolean;
-};
-
-export type SavedAddressApi = {
-  address_id: string;
-  user_id: string;
-  label: 'home' | 'work' | 'other';
-  full_name: string;
-  phone: string;
-  line1: string;
-  line2: string;
-  landmark: string;
-  city: string;
-  pincode: string;
-  state: string;
-  lat?: number | null;
-  lng?: number | null;
-  is_default: boolean;
-  created_at: string;
-};
-
-export type WalletTxn = {
-  txn_id: string;
-  user_id: string;
-  type: 'credit' | 'debit' | 'refund' | 'topup';
-  amount: number;
-  note: string;
-  created_at: string;
-};
-
-export type WalletSummary = {
-  balance: number;
-  transactions: WalletTxn[];
-};
-
-export type WishlistProduct = Product & { added_at: string };
-
-export type AuthResponse = { token: string; user: AuthUser };
-
-export type Product = {
-  product_id: string;
-  name: string;
-  description: string;
-  price: number;
-  unit: string;
-  category: string;
-  image_url: string;
-  stock: number;
-};
-
-export type Category = {
-  slug: string;
-  name: string;
-  icon: string;
-  gallery: string[];
-  is_default: boolean;
-  created_at?: string;
-};
-
-export type OrderItem = {
-  product_id: string;
-  name: string;
-  image_url: string;
-  unit: string;
-  price: number;
-  quantity: number;
-  subtotal: number;
-};
-
-export type Order = {
-  order_id: string;
-  user_id: string;
-  user_email: string;
-  items: OrderItem[];
-  subtotal?: number;
-  delivery_fee?: number;
-  wallet_applied?: number;
-  payable?: number;
-  total: number;
-  address: {
-    full_name: string;
-    phone: string;
-    line1: string;
-    line2: string;
-    city: string;
-    pincode: string;
-  };
-  payment_method: 'cod' | 'card' | 'wallet' | 'razorpay';
-  payment_status?: 'pending' | 'paid' | 'cod' | 'failed';
-  notes: string;
-  status: 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled';
-  created_at: string;
-  updated_at: string;
-  // Optional fields set after a rider is assigned to the order
-  driver_id?: string | null;
-  driver_name?: string | null;
-  driver_phone?: string | null;
-  driver_vehicle?: string | null;
-  driver_status?: string | null;
-  assigned_at?: string | null;
-};
-
-export type OrderDriverLocation =
-  | { assigned: false }
-  | {
-      assigned: true;
-      driver: {
-        driver_id: string;
-        name?: string | null;
-        phone?: string | null;
-        vehicle?: string | null;
-      };
-      location: {
-        lat?: number | null;
-        lng?: number | null;
-        updated_at?: string | null;
-      };
-    };
-
-export type Invoice = {
-  invoice_no: string;
-  order_id: string;
-  date: string;
-  customer: { name: string; email: string };
-  address: Order['address'];
-  items: OrderItem[];
-  subtotal: number;
-  delivery_fee: number;
-  wallet_applied: number;
-  payable: number;
-  total: number;
-  payment_method: string;
-  payment_status: string;
-  status: string;
-};
+// Re-export shared TS types so existing imports keep working.
+export type {
+  AuthUser,
+  AuthResponse,
+  Role,
+  Product,
+  ProductVariant,
+  Category,
+  OrderItem,
+  Order,
+  OrderDriverLocation,
+  Invoice,
+  WishlistItem,
+  WishlistProduct,
+  WalletTxn,
+  WalletSummary,
+  ServerAddress,
+  ServerAddressIn,
+  SavedAddressApi,
+  AuditLogEntry,
+  LoginHistoryEntry,
+} from './types';

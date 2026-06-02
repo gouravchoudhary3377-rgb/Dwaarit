@@ -64,6 +64,12 @@ class Product(BaseModel):
     category: str
     image_url: str = ""
     stock: int = 100
+    # Blinkit-style merchandising fields (optional)
+    mrp: Optional[float] = None
+    discount_percent: Optional[int] = None
+    delivery_eta_min: Optional[int] = 12
+    rating: Optional[float] = None
+    rating_count: Optional[int] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -75,6 +81,9 @@ class ProductIn(BaseModel):
     category: str
     image_url: str = ""
     stock: int = 100
+    mrp: Optional[float] = None
+    discount_percent: Optional[int] = None
+    delivery_eta_min: Optional[int] = 12
 
 
 class ProductUpdate(BaseModel):
@@ -85,6 +94,9 @@ class ProductUpdate(BaseModel):
     category: Optional[str] = None
     image_url: Optional[str] = None
     stock: Optional[int] = None
+    mrp: Optional[float] = None
+    discount_percent: Optional[int] = None
+    delivery_eta_min: Optional[int] = None
 
 
 class Category(BaseModel):

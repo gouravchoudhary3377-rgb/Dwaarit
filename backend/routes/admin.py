@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from database import db
-from security import require_admin
+from security import require_admin, require_super_admin
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -259,3 +259,110 @@ async def admin_update_ticket_status(
     if res.matched_count == 0:
         raise HTTPException(404, "Ticket not found")
     return {"ok": True, "status": body.status}
+
+
+# -------- Phase 8.6: Security audit (super_admin only) --------
+def _strip_mongo(doc: dict) -> dict:
+    if not doc:
+        return doc
+    doc.pop("_id", None)
+    return doc
+
+
+@router.get("/audit-logs")
+async def admin_audit_logs(
+    _: dict = Depends(require_super_admin),
+    action: Optional[str] = Query(default=None),
+    user_id: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    skip: int = Query(default=0, ge=0),
+):
+    """Paginated audit-log feed. Filterable by action, user_id, and status."""
+    q: dict = {}
+    if action:
+        q["action"] = action
+    if user_id:
+        q["user_id"] = user_id
+    if status:
+        q["status"] = status
+
+    total = await db.audit_logs.count_documents(q)
+    cursor = (
+        db.audit_logs.find(q, {"_id": 0})
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+    items = [_strip_mongo(d) async for d in cursor]
+    return {"total": total, "items": items, "limit": limit, "skip": skip}
+
+
+@router.get("/login-history")
+async def admin_login_history(
+    _: dict = Depends(require_super_admin),
+    email: Optional[str] = Query(default=None),
+    user_id: Optional[str] = Query(default=None),
+    success: Optional[bool] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    skip: int = Query(default=0, ge=0),
+):
+    """Login attempt audit trail (success + failure)."""
+    q: dict = {}
+    if email:
+        q["email"] = email.lower()
+    if user_id:
+        q["user_id"] = user_id
+    if success is not None:
+        q["success"] = bool(success)
+
+    total = await db.login_history.count_documents(q)
+    cursor = (
+        db.login_history.find(q, {"_id": 0})
+        .sort("created_at", -1)
+        .skip(skip)
+        .limit(limit)
+    )
+    items = [_strip_mongo(d) async for d in cursor]
+    return {"total": total, "items": items, "limit": limit, "skip": skip}
+
+
+@router.get("/security/summary")
+async def admin_security_summary(_: dict = Depends(require_super_admin)):
+    """High-level security KPIs for the super-admin security dashboard."""
+    now = datetime.now(timezone.utc)
+    last24 = now - timedelta(hours=24)
+    last7 = now - timedelta(days=7)
+
+    total_audit = await db.audit_logs.count_documents({})
+    audit_last24 = await db.audit_logs.count_documents({"created_at": {"$gte": last24}})
+    failed_logins_24 = await db.login_history.count_documents(
+        {"success": False, "created_at": {"$gte": last24}}
+    )
+    successful_logins_24 = await db.login_history.count_documents(
+        {"success": True, "created_at": {"$gte": last24}}
+    )
+    failed_logins_7 = await db.login_history.count_documents(
+        {"success": False, "created_at": {"$gte": last7}}
+    )
+
+    # Top 5 emails with most failed logins in last 24h
+    top_fail_pipeline = [
+        {"$match": {"success": False, "created_at": {"$gte": last24}}},
+        {"$group": {"_id": "$email", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5},
+    ]
+    top_failed_emails = [
+        {"email": d["_id"], "count": d["count"]}
+        async for d in db.login_history.aggregate(top_fail_pipeline)
+    ]
+
+    return {
+        "total_audit_logs": total_audit,
+        "audit_logs_last_24h": audit_last24,
+        "failed_logins_last_24h": failed_logins_24,
+        "successful_logins_last_24h": successful_logins_24,
+        "failed_logins_last_7d": failed_logins_7,
+        "top_failed_login_emails_24h": top_failed_emails,
+    }
