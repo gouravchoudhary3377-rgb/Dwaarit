@@ -96,6 +96,12 @@ async def login(body: LoginIn, request: Request):
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user or not user.get("password_hash"):
         await log_login(email=email, success=False, provider="password", reason="not_found", request=request)
+        await log_event(
+            action="auth.login",
+            status="failure",
+            details={"email": email, "reason": "not_found"},
+            request=request,
+        )
         raise HTTPException(401, "Invalid credentials")
     if not verify_password(body.password, user["password_hash"]):
         await log_login(
@@ -104,6 +110,14 @@ async def login(body: LoginIn, request: Request):
             user_id=user.get("user_id"),
             provider="password",
             reason="bad_password",
+            request=request,
+        )
+        await log_event(
+            action="auth.login",
+            status="failure",
+            user_id=user.get("user_id"),
+            role=user.get("role"),
+            details={"email": email, "reason": "bad_password"},
             request=request,
         )
         raise HTTPException(401, "Invalid credentials")

@@ -1,0 +1,36 @@
+{
+  "summary": "Phase 8.6 Security Hardening RETEST (iteration 17) — focused on the 3 fixes + 2 previously-skipped scenarios from iteration_16. New focused suite tests/test_phase86_retest_iter17.py: 11/11 PASSED. Bug #1 verified: require_super_admin is now strict — super_admin gets 200 and role='admin' gets 403 on GET /api/admin/audit-logs, /api/admin/login-history, /api/admin/security/summary. Bug #2 verified: failed login (wrong password AND not_found email) now writes audit_logs entry with action='auth.login', status='failure' and details.email (lowercased) + details.reason ('bad_password' or 'not_found'). Bug #3 verified: PATCH /api/admin/users/{id}/role writes audit_logs with action='role.change', status='success', details.previous_role and details.new_role; endpoint is gated by require_super_admin so a role='admin' caller correctly receives 403. No regressions observed in backend logs.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase86_retest_iter17.py",
+    "/app/backend/tests/test_phase86_security_hardening.py",
+    "/app/test_reports/pytest/iter17_results.xml"
+  ],
+  "action_items": [
+    "All three previously-reported bugs are fixed and verified. No further action needed for Phase 8.6 security hardening fixes.",
+    "Naming deviation (auth.signup vs auth.register) is intentionally kept per main-agent note — no change required."
+  ],
+  "critical_code_review_comments": [
+    "security.py: require_super_admin now does strict equality check on role=='super_admin' — correct.",
+    "routes/auth.py: failure paths (not_found and bad_password) now write BOTH login_history (success=false) AND audit_logs (action='auth.login', status='failure') with email lowercased + reason — correct.",
+    "routes/admin.py: PATCH /users/{id}/role now uses Depends(require_super_admin) and emits log_event(action='role.change', status='success', details={target_user_id, previous_role, new_role}) — correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase86_retest_iter17.py (new focused retest suite — 11 tests)"
+  ],
+  "success_rate": {"backend": "100% (11/11 passed)", "frontend": "not tested (backend-only request)"},
+  "seed_data_creation": "Created a handful of TEST_iter17_*@dwaarit-test.com users via /api/auth/signup during the retest (admin-role user, role-change targets, victim). Prefixed TEST_iter17_ for easy cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 8.6 retest is fully green. Re-run command: `EXPO_PUBLIC_BACKEND_URL=$(grep '^EXPO_PUBLIC_BACKEND_URL=' /app/frontend/.env | cut -d= -f2) python -m pytest /app/backend/tests/test_phase86_retest_iter17.py -v`. The original broader suite test_phase86_security_hardening.py still contains pytest.skip() blocks for the (now-fixed) audit gaps and may report them as skipped rather than asserting — consider removing those skips if you want it to enforce the spec going forward.",
+  "rca_of_issue": "All three bugs are resolved: (1) security.py require_super_admin uses strict role=='super_admin' equality (no longer relies on _effective_role alias); (2) routes/auth.py login handler writes audit_logs.auth.login.failure on both not_found and bad_password branches; (3) routes/admin.py PATCH /users/{id}/role now depends on require_super_admin AND emits role.change audit_logs with previous_role/new_role details."
+}

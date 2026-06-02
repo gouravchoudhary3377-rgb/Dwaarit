@@ -83,7 +83,9 @@ def _effective_role(user: dict) -> str:
 
 
 async def require_super_admin(user: dict = Depends(get_current_user)) -> dict:
-    if _effective_role(user) != "super_admin":
+    # Strict equality — do NOT honour the legacy 'admin' -> 'super_admin' alias here.
+    # Regular admins must NOT see audit logs / login history / security KPIs.
+    if user.get("role") != "super_admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Super Admin only")
     return user
 

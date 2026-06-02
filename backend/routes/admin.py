@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from database import db
 from security import require_admin, require_super_admin
+from fastapi import Request
+from audit import log_event
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -155,13 +157,30 @@ async def admin_list_users(
 
 @router.patch("/users/{user_id}/role")
 async def admin_update_role(
-    user_id: str, body: RoleUpdateIn, current: dict = Depends(require_admin)
+    user_id: str,
+    body: RoleUpdateIn,
+    request: Request,
+    current: dict = Depends(require_super_admin),
 ):
-    if user_id == current["user_id"] and body.role != "admin":
+    if user_id == current["user_id"] and body.role not in ("admin", "super_admin"):
         raise HTTPException(400, "You cannot demote yourself")
-    res = await db.users.update_one({"user_id": user_id}, {"$set": {"role": body.role}})
-    if res.matched_count == 0:
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
         raise HTTPException(404, "User not found")
+    previous_role = target.get("role")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"role": body.role}})
+    await log_event(
+        action="role.change",
+        status="success",
+        user_id=current["user_id"],
+        role=current.get("role"),
+        details={
+            "target_user_id": user_id,
+            "previous_role": previous_role,
+            "new_role": body.role,
+        },
+        request=request,
+    )
     return {"ok": True, "user_id": user_id, "role": body.role}
 
 
