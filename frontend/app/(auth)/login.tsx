@@ -98,6 +98,7 @@ export default function Login() {
             autoComplete="email"
             keyboardType="email-address"
             placeholder="you@example.com"
+            testID="login-email-input"
           />
           <TextField
             label="Password"
@@ -105,6 +106,7 @@ export default function Login() {
             onChangeText={setPassword}
             secureTextEntry
             placeholder="••••••••"
+            testID="login-password-input"
           />
           {err ? <Text style={styles.err}>{err}</Text> : null}
           <PrimaryButton title="Sign In" onPress={onSubmit} loading={loading} testID="login-btn" />

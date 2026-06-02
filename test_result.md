@@ -273,39 +273,48 @@ test_plan:
 phase_8_6_backend:
   - task: "Audit log write-side — auth.login/logout/register + password.change + role.change events"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/audit.py, backend/routes/auth.py, backend/routes/admin.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Successful login writes audit_logs entry with action='auth.login', status='success', user_id, email, ip, user_agent. Failed login writes status='failure'. Registration writes 'auth.register'. Logout writes 'auth.logout'. Role change via PATCH /api/admin/users/{id}/role writes 'role.change'."
+        comment: "Initial: write-side wired up across signup/login/logout/role-change."
+      - working: false
+        agent: "testing"
+        comment: "iteration_16: failed login did NOT write audit_logs (only login_history). Role-change did NOT write audit_logs."
+      - working: true
+        agent: "testing"
+        comment: "iteration_17 retest 11/11 PASS: failed login (bad_password + not_found) writes audit_logs status='failure'. PATCH /api/admin/users/{id}/role writes audit_logs action='role.change' with previous_role/new_role in details."
 
   - task: "Login history + brute-force lockout (5 fails/15min => HTTP 429)"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/routes/auth.py, backend/audit.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Every login attempt (success or failure) writes a login_history doc {email, user_id?, success, ip, user_agent, created_at}. After 5 failed attempts within 15 minutes for the same email, the endpoint must return HTTP 429 Too Many Requests instead of 401. A successful login should reset / not trip the lockout."
+      - working: true
+        agent: "testing"
+        comment: "iteration_16: login_history success+failure docs, lockout fires HTTP 429 after 5 failures in 15min. PASSED."
 
   - task: "Super-admin audit + login-history viewer endpoints"
     implemented: true
-    working: "NA"
-    file: "backend/routes/admin.py"
+    working: true
+    file: "backend/routes/admin.py, backend/security.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "GET /api/admin/audit-logs?action=&user_id=&status=&limit=&skip= — paginated reverse-chrono. GET /api/admin/login-history?email=&user_id=&success=&limit=&skip= — paginated reverse-chrono. GET /api/admin/security/summary — KPIs (total_audit_logs, audit_logs_last_24h, failed_logins_last_24h, successful_logins_last_24h, top_failed_login_emails_24h). ALL THREE must be 200 for super_admin (admin@dwaarit.com) and 403 for regular admin / customer / store_manager / rider, 401 for unauth."
+      - working: false
+        agent: "testing"
+        comment: "iteration_16: require_super_admin was honouring legacy 'admin' alias, so a role='admin' user incorrectly got 200 on viewer endpoints."
+      - working: true
+        agent: "testing"
+        comment: "iteration_17 retest: require_super_admin now strict — role='admin' gets 403 on /api/admin/audit-logs, /api/admin/login-history, /api/admin/security/summary. super_admin gets 200. PATCH /api/admin/users/{id}/role also now require_super_admin (admin→403)."
 
 phase_8_5_backend:
   - task: "GET /api/orders/{order_id}/driver-location — assigned flag + authZ matrix"
@@ -422,6 +431,8 @@ frontend:
         comment: "MIXED on web preview. PASS: Checkout screen renders the new Phase 3 layout (Items total / Delivery / To pay), all 3 payment options visible (Cash on Delivery, UPI/Cards/Netbanking, Dwaarit Wallet with balance pill), 'Use wallet balance' switch with 'Apply ₹X from wallet' helper text. COD path WORKS end-to-end (order placed, lands on order detail). CRITICAL BLOCKER (same root cause as Wallet task): selecting 'UPI / Cards / Netbanking' and tapping 'Pay & place order' opens the Razorpay mock WebView which on web only prints 'React Native WebView does not support this platform.' → no way to Simulate success → order stays pending forever / never gets payment_status=paid on web preview. ADDITIONAL FRONTEND BUG (CRITICAL, separate root cause): app/_layout.tsx never mounts the AddressAuthSync component (src/components/AddressAuthSync.tsx exists but is dead code), so useAddressStore.setAuthToken is never called → /api/addresses GET never runs on login → user always sees 'No saved addresses yet' on /checkout even when the backend has saved addresses. I worked around it by using the /location → 'Enter manually' flow which writes to the local store, but a real user opening a fresh device will be unable to check out without re-adding their address. Also saw one suspicious incident where tapping the 'Use wallet balance' switch appeared to also fire 'Place order' on the same gesture (placed a COD order without explicit tap) — couldn't reproduce 100%, flagged as MEDIUM."
 
 agent_communication:
+  - agent: "main"
+    message: "Re-entry session (autonomous mode per user spec). Fixed two known frontend bugs from iteration_10 that were never patched: (1) Mounted <AddressAuthSync /> inside <ToastProvider> in /app/frontend/app/_layout.tsx so useAddressStore.setAuthToken now fires on login and /api/addresses GET runs — saved addresses will appear on /checkout instead of 'No saved addresses yet'. (2) Order detail summary now always renders label 'Payable' (was conditionally 'Total' when wallet_applied=0). Verified RazorpayCheckout.tsx already has a Platform.OS==='web' branch (line 147), so the WebView-on-web blocker should be resolved — please re-verify on web preview. Phase 8.6 backend is already PASSED per iteration_17. Now requesting full E2E retest of Phase 8.5 (driver-location + Customer Track screen) + the two fixes above. Credentials in /app/memory/test_credentials.md."
   - agent: "testing"
     message: "Phase 3 + Phase 4 FRONTEND validation on web preview (http://localhost:3000) — MIXED results. PASS: Login (demo@dwaarit.com), Home + add-to-cart, /checkout new Phase 3 layout, COD path end-to-end (places order), /order/{id} renders Subtotal/Delivery/Wallet applied/Payable/Total with correct math + 'Razorpay'/'Wallet'/'Cash on Delivery' method pills + 'PAID'/'PAID'/'COD' status pills + Download invoice CTA + Track live on map CTA on live orders. FAIL — 3 frontend bugs, none of them backend: (1) CRITICAL — src/components/RazorpayCheckout.tsx uses react-native-webview which has no web shim, so BOTH the wallet top-up Razorpay flow and the checkout Razorpay flow dead-end on a screen that literally says 'React Native WebView does not support this platform.' — there is no Simulate success button reachable on web preview, so neither /api/wallet/razorpay/verify nor /api/orders/{id}/payment/verify is ever called from the UI. Fix is a Platform.OS==='web' branch in RazorpayCheckout.tsx that renders Simulate success/failure as plain Pressables (or an iframe wrapping the same HTML). (2) CRITICAL — app/_layout.tsx never mounts <AddressAuthSync /> (the component exists at src/components/AddressAuthSync.tsx but is dead code), so useAddressStore.setAuthToken is never called on login → /api/addresses GET never fires → /checkout shows 'No saved addresses yet' even for users who already have backend-stored addresses. Verified via network panel: 0 hits on /api/addresses across the entire session. Fix: import + mount AddressAuthSync inside the RootLayout tree. (3) HIGH — app/order/[id].tsx status timeline renders all 4 steps (placed/accepted/out-for-delivery/delivered) with filled orange check icons even when status='pending'. Should gate by current step index. Minor #1: order screen shows 'Total' instead of 'Payable' when wallet_applied=0 (spec asks Payable on every order). Minor #2: tapping the 'Use wallet balance' Switch on /checkout once also fired the underlying 'Place order' button on the same gesture (placed an unintended COD order). Full report: /app/test_reports/iteration_10.json. NO frontend code was modified per instructions — diagnose-only run."
 

@@ -270,7 +270,7 @@ export default function OrderDetail() {
           ) : null}
           <View style={styles.divider} />
           <View style={styles.payRow}>
-            <Text style={styles.totalK}>{walletApplied > 0 ? 'Payable' : 'Total'}</Text>
+            <Text style={styles.totalK}>Payable</Text>
             <Text style={styles.totalV}>{formatINR(payable)}</Text>
           </View>
           <View style={styles.payMethodRow}>

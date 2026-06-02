@@ -10,6 +10,7 @@ import { AuthProvider } from '@/src/context/AuthContext';
 import { useCart } from '@/src/store/cartStore';
 import { useAddressStore } from '@/src/store/addressStore';
 import { ToastProvider } from '@/src/components/ui/Toast';
+import { AddressAuthSync } from '@/src/components/AddressAuthSync';
 import { colors } from '@/src/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -35,6 +36,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AuthProvider>
           <ToastProvider>
+            <AddressAuthSync />
             <StatusBar style="dark" />
             <Stack
               screenOptions={{
