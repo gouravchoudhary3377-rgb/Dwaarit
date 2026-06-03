@@ -132,6 +132,18 @@ export default function ProductDetail() {
   const effectiveQty = Math.min(qty, maxQty);
   const reachedLimit = !outOfStock && inCartQty + effectiveQty >= stock;
 
+  // Selling price with backward-compat fallback to legacy `price`.
+  const sellingPrice = product.selling_price ?? product.price;
+  let mrp: number | null = product.mrp ?? null;
+  let discountPct: number | null = product.discount_percent ?? null;
+  if (mrp && mrp > sellingPrice) {
+    discountPct = discountPct ?? Math.round(((mrp - sellingPrice) / mrp) * 100);
+  } else {
+    mrp = null;
+    discountPct = null;
+  }
+  const youSave = mrp ? mrp - sellingPrice : 0;
+
   const handleAdd = () => {
     if (outOfStock) return;
     add(product, effectiveQty);
@@ -186,9 +198,27 @@ export default function ProductDetail() {
         <View style={styles.body}>
           <Text style={styles.category}>{product.category}</Text>
           <Text style={styles.name}>{product.name}</Text>
-          <View style={styles.row}>
-            <Text style={styles.price}>{formatINR(product.price)}</Text>
-            <Text style={styles.unit}>/ {product.unit}</Text>
+          <View style={styles.priceBlock}>
+            <View style={styles.priceLine}>
+              <Text style={styles.price}>{formatINR(sellingPrice)}</Text>
+              <Text style={styles.unit}>/ {product.unit}</Text>
+            </View>
+            {mrp ? (
+              <View style={styles.mrpLine}>
+                <Text style={styles.mrp}>MRP {formatINR(mrp)}</Text>
+                {discountPct ? (
+                  <View style={styles.offPill}>
+                    <Text style={styles.offPillText}>{discountPct}% OFF</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            {mrp && youSave > 0 ? (
+              <Text style={styles.savingText}>
+                You save {formatINR(youSave)} on this item
+              </Text>
+            ) : null}
+            <Text style={styles.taxNote}>Inclusive of all taxes</Text>
           </View>
 
           {inCartQty > 0 && (
@@ -258,7 +288,9 @@ export default function ProductDetail() {
                     <Text style={styles.relName} numberOfLines={2}>
                       {p.name}
                     </Text>
-                    <Text style={styles.relPrice}>{formatINR(p.price)}</Text>
+                    <Text style={styles.relPrice}>
+                      {formatINR(p.selling_price ?? p.price)}
+                    </Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -306,8 +338,8 @@ export default function ProductDetail() {
               outOfStock
                 ? 'Out of stock'
                 : inCartQty > 0
-                ? `Add ${effectiveQty} more • ${formatINR(product.price * effectiveQty)}`
-                : `Add ${effectiveQty} • ${formatINR(product.price * effectiveQty)}`
+                ? `Add ${effectiveQty} more • ${formatINR(sellingPrice * effectiveQty)}`
+                : `Add ${effectiveQty} • ${formatINR(sellingPrice * effectiveQty)}`
             }
             onPress={handleAdd}
             disabled={outOfStock}
@@ -359,8 +391,38 @@ const styles = StyleSheet.create({
   },
   name: { ...typography.h1, color: colors.textPrimary },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  price: { ...typography.h2, color: colors.textPrimary },
+  priceBlock: { marginTop: spacing.sm, gap: 4 },
+  priceLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
+  price: { ...typography.h2, color: colors.textPrimary, fontWeight: '800' },
   unit: { ...typography.body, color: colors.textSecondary, marginBottom: 3 },
+  mrpLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  mrp: {
+    ...typography.body,
+    color: colors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  offPill: {
+    backgroundColor: '#0C831F',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.sm,
+  },
+  offPillText: {
+    color: colors.white,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  savingText: {
+    ...typography.captionBold,
+    color: '#0C831F',
+    marginTop: 2,
+  },
+  taxNote: {
+    ...typography.tiny,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
 
   inCartChip: {
     marginTop: spacing.md,

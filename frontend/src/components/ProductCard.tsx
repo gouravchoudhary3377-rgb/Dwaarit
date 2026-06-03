@@ -40,17 +40,21 @@ export function ProductCard({ product, onPress }: Props) {
   const outOfStock = (product.stock ?? 0) <= 0;
   const lowStock = !outOfStock && (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5;
 
+  // Selling price (preferred) with backward-compat fallback to legacy `price`.
+  const sellingPrice = product.selling_price ?? product.price;
+
   // Compute discount info defensively — server may not send mrp.
   const { mrp, discountPct } = useMemo(() => {
     let mrpVal = product.mrp ?? null;
     let pct = product.discount_percent ?? null;
-    if (mrpVal && mrpVal > product.price) {
-      pct = pct ?? Math.round(((mrpVal - product.price) / mrpVal) * 100);
+    if (mrpVal && mrpVal > sellingPrice) {
+      pct = pct ?? Math.round(((mrpVal - sellingPrice) / mrpVal) * 100);
     } else {
       mrpVal = null;
+      pct = null;
     }
     return { mrp: mrpVal, discountPct: pct };
-  }, [product.mrp, product.discount_percent, product.price]);
+  }, [product.mrp, product.discount_percent, sellingPrice]);
 
   const eta = product.delivery_eta_min ?? 12;
 
@@ -113,9 +117,14 @@ export function ProductCard({ product, onPress }: Props) {
 
         <View style={styles.priceRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.price}>{formatINR(product.price)}</Text>
-            {mrp ? (
-              <Text style={styles.mrp}>{formatINR(mrp)}</Text>
+            <View style={styles.priceLine}>
+              <Text style={styles.price}>{formatINR(sellingPrice)}</Text>
+              {mrp ? (
+                <Text style={styles.mrp}>{formatINR(mrp)}</Text>
+              ) : null}
+            </View>
+            {discountPct && discountPct > 0 ? (
+              <Text style={styles.offText}>{discountPct}% OFF</Text>
             ) : null}
           </View>
 
