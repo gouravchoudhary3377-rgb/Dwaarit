@@ -120,7 +120,14 @@ export default function AdminProducts() {
               <Text style={styles.emptySub}>Tap “New” to add your first product.</Text>
             </View>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const sellingPrice = item.selling_price ?? item.price;
+            const mrp = item.mrp ?? 0;
+            const selfPrice = item.self_price ?? 0;
+            const showMrp = mrp > 0 && mrp > sellingPrice;
+            const discountPct = showMrp ? Math.round(((mrp - sellingPrice) / mrp) * 100) : 0;
+            const marginPerUnit = selfPrice > 0 ? sellingPrice - selfPrice : 0;
+            return (
             <Pressable onPress={() => openEdit(item)} style={styles.card}>
               <Image source={{ uri: item.image_url }} style={styles.thumb} contentFit="cover" />
               <View style={{ flex: 1, gap: 2 }}>
@@ -130,8 +137,18 @@ export default function AdminProducts() {
                 <Text style={styles.cat} numberOfLines={1}>
                   {item.category} · {item.unit}
                 </Text>
-                <Text style={styles.price}>
-                  {formatINR(item.price)} · stock {item.stock}
+                <View style={styles.priceRow}>
+                  <Text style={styles.price}>{formatINR(sellingPrice)}</Text>
+                  {showMrp ? (
+                    <>
+                      <Text style={styles.mrpStrike}>{formatINR(mrp)}</Text>
+                      <Text style={styles.discountTag}>{discountPct}% OFF</Text>
+                    </>
+                  ) : null}
+                </View>
+                <Text style={styles.metaLine}>
+                  Stock {item.stock}
+                  {marginPerUnit > 0 ? ` · Margin ${formatINR(marginPerUnit)}` : ''}
                 </Text>
               </View>
               <View style={{ gap: 6 }}>
@@ -143,7 +160,8 @@ export default function AdminProducts() {
                 </Pressable>
               </View>
             </Pressable>
-          )}
+            );
+          }}
         />
       )}
     </View>
@@ -189,6 +207,18 @@ const styles = StyleSheet.create({
   name: { ...typography.bodyBold, color: colors.textPrimary },
   cat: { ...typography.caption, color: colors.textSecondary },
   price: { ...typography.captionBold, color: colors.primary },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 },
+  mrpStrike: {
+    ...typography.tiny,
+    color: colors.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  discountTag: {
+    ...typography.tiny,
+    color: '#0F8A4C',
+    fontWeight: '700',
+  },
+  metaLine: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
   smallBtn: {
     paddingHorizontal: 12,
     height: 30,

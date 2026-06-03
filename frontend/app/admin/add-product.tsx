@@ -28,7 +28,9 @@ import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 type FormState = {
   name: string;
   description: string;
-  price: string;
+  mrp: string;
+  selling_price: string;
+  self_price: string;
   unit: string;
   category: string;
   image_url: string;
@@ -38,7 +40,9 @@ type FormState = {
 const EMPTY: FormState = {
   name: '',
   description: '',
-  price: '',
+  mrp: '',
+  selling_price: '',
+  self_price: '',
   unit: 'ea',
   category: '',
   image_url: '',
@@ -158,7 +162,9 @@ export default function AddProductScreen() {
         setForm({
           name: p.name,
           description: p.description ?? '',
-          price: String(p.price),
+          mrp: p.mrp != null ? String(p.mrp) : String(p.price ?? ''),
+          selling_price: p.selling_price != null ? String(p.selling_price) : String(p.price ?? ''),
+          self_price: p.self_price != null ? String(p.self_price) : '',
           unit: p.unit,
           category: p.category,
           image_url: p.image_url ?? '',
@@ -308,9 +314,14 @@ export default function AddProductScreen() {
     setErr(null);
     if (!form.name.trim()) return setErr('Name is required.');
     if (!form.category.trim()) return setErr('Pick or create a category.');
-    if (!form.price.trim()) return setErr('Price is required.');
-    const price = Number(form.price);
-    if (Number.isNaN(price) || price < 0) return setErr('Invalid price.');
+    if (!form.selling_price.trim()) return setErr('Selling Price is required.');
+    const selling_price = Number(form.selling_price);
+    if (Number.isNaN(selling_price) || selling_price < 0) return setErr('Invalid Selling Price.');
+    const mrp = form.mrp.trim() ? Number(form.mrp) : selling_price;
+    if (Number.isNaN(mrp) || mrp < 0) return setErr('Invalid MRP.');
+    if (mrp < selling_price) return setErr('MRP must be ≥ Selling Price.');
+    const self_price = form.self_price.trim() ? Number(form.self_price) : 0;
+    if (Number.isNaN(self_price) || self_price < 0) return setErr('Invalid Self Price.');
     const stock = Number(form.stock);
     if (Number.isNaN(stock) || stock < 0) return setErr('Invalid stock.');
 
@@ -319,7 +330,10 @@ export default function AddProductScreen() {
       const payload = {
         name: form.name.trim(),
         description: form.description.trim(),
-        price,
+        price: selling_price,
+        mrp,
+        selling_price,
+        self_price,
         unit: form.unit.trim() || 'ea',
         category: form.category.trim(),
         image_url: form.image_url.trim(),
@@ -479,30 +493,71 @@ export default function AddProductScreen() {
             )}
           </View>
 
-          {/* Price + Unit */}
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <View style={{ flex: 1 }}>
-              <TextField
-                label="Price (₹)"
-                value={form.price}
-                onChangeText={(v) => update('price', v.replace(/[^\d.]/g, ''))}
-                keyboardType="decimal-pad"
-                placeholder="0"
-              />
+          {/* Pricing: MRP, Selling Price, Self Price */}
+          <View style={{ gap: spacing.sm }}>
+            <Text style={styles.sectionLabel}>Pricing</Text>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <TextField
+                  label="MRP (₹)"
+                  value={form.mrp}
+                  onChangeText={(v) => update('mrp', v.replace(/[^\d.]/g, ''))}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextField
+                  label="Selling (₹)"
+                  value={form.selling_price}
+                  onChangeText={(v) => update('selling_price', v.replace(/[^\d.]/g, ''))}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextField
+                  label="Self (₹)"
+                  value={form.self_price}
+                  onChangeText={(v) => update('self_price', v.replace(/[^\d.]/g, ''))}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sectionLabel}>Unit</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingTop: 6 }}>
-                {UNITS.map((u) => {
-                  const a = form.unit === u;
-                  return (
-                    <Pressable key={u} onPress={() => update('unit', u)} style={[styles.unitChip, a && styles.unitChipActive]}>
-                      <Text style={[styles.unitChipText, a && { color: colors.white }]}>{u}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
+            {(() => {
+              const m = Number(form.mrp);
+              const s = Number(form.selling_price);
+              const c = Number(form.self_price);
+              const hints: string[] = [];
+              if (!Number.isNaN(m) && !Number.isNaN(s) && m > 0 && s > 0 && m > s) {
+                const off = Math.round((1 - s / m) * 100);
+                hints.push(`${off}% off MRP`);
+              }
+              if (!Number.isNaN(s) && !Number.isNaN(c) && s > 0 && c > 0) {
+                const profit = s - c;
+                const margin = s > 0 ? Math.round((profit / s) * 100) : 0;
+                hints.push(`Profit ₹${profit.toFixed(2)} · ${margin}% margin`);
+              }
+              return hints.length ? (
+                <Text style={styles.pricingHint}>{hints.join(' · ')}</Text>
+              ) : null;
+            })()}
+          </View>
+
+          {/* Unit */}
+          <View style={{ gap: spacing.sm }}>
+            <Text style={styles.sectionLabel}>Unit</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingTop: 6 }}>
+              {UNITS.map((u) => {
+                const a = form.unit === u;
+                return (
+                  <Pressable key={u} onPress={() => update('unit', u)} style={[styles.unitChip, a && styles.unitChipActive]}>
+                    <Text style={[styles.unitChipText, a && { color: colors.white }]}>{u}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Stock */}

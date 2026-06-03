@@ -47,6 +47,8 @@ export type Product = {
   stock: number;
   // Optional Blinkit-style enhancements:
   mrp?: number | null;
+  selling_price?: number | null;
+  self_price?: number | null;
   discount_percent?: number | null;
   variants?: ProductVariant[];
   rating?: number | null;
