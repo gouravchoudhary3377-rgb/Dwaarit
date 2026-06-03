@@ -66,5 +66,5 @@ export const useCart = create<CartState>((set, get) => ({
     persist([]);
   },
   count: () => get().lines.reduce((s, l) => s + l.quantity, 0),
-  subtotal: () => get().lines.reduce((s, l) => s + l.product.price * l.quantity, 0),
+  subtotal: () => get().lines.reduce((s, l) => s + (l.product.selling_price ?? l.product.price) * l.quantity, 0),
 }));

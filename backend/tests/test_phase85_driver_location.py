@@ -11,7 +11,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://dwaarit-grocery.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://order-analytics-26.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api"
 
 CUSTOMER_EMAIL = "demo@dwaarit.com"

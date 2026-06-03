@@ -67,6 +67,9 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
             "image_url": p.get("image_url", ""),
             "unit": p.get("unit", "ea"),
             "price": p["price"],
+            "mrp": p.get("mrp"),
+            "selling_price": p.get("selling_price"),
+            "self_price": p.get("self_price"),
             "quantity": it.quantity,
             "subtotal": line,
         })

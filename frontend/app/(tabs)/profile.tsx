@@ -193,7 +193,6 @@ export default function Profile() {
   const { user, token, signOut } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [wishlistCount, setWishlistCount] = useState<number>(0);
 
   const avatarUri = useMemo(() => {
     if (user?.picture) return user.picture;
@@ -207,10 +206,6 @@ export default function Profile() {
       .walletSummary(token)
       .then((w) => setWalletBalance(w.balance || 0))
       .catch(() => setWalletBalance(0));
-    profileApi
-      .wishlist(token)
-      .then((items) => setWishlistCount(items?.length || 0))
-      .catch(() => setWishlistCount(0));
   }, [token]);
 
   const stats = useMemo(() => {
@@ -325,14 +320,6 @@ export default function Profile() {
             label="Wallet"
             hint={`${formatINR(walletBalance)} available`}
             onPress={() => router.push('/profile/wallet')}
-          />
-          <MenuRow
-            icon={IC.gift('#D81B60')}
-            iconBg="#FCE4EC"
-            iconColor="#D81B60"
-            label="Wishlist"
-            hint={wishlistCount ? `${wishlistCount} item${wishlistCount === 1 ? '' : 's'} saved` : 'No items yet'}
-            onPress={() => router.push('/profile/wishlist')}
             isLast
           />
         </Section>

@@ -1,0 +1,55 @@
+{
+  "summary": "Iteration 18: Profit Dashboard, Admin Orders pricing, Profile wishlist removal, Cart pricing — 17/17 backend tests pass after fixing a critical 500 error on GET /api/admin/dashboard. All profit analytics features verified end-to-end. One frontend issue: Edit Profile back button not visible due to layout headerShown override.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/admin/dashboard",
+        "issue": "Returned HTTP 500 — TypeError: can't compare offset-naive and offset-aware datetimes. MongoDB returns naive datetimes but today_start/last7/last_month are UTC-aware. Comparison in profit loop failed. FIXED in admin.py by normalising created_at with .replace(tzinfo=timezone.utc) when tzinfo is None.",
+        "priority": "CRITICAL",
+        "status": "FIXED"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Edit Profile (profile/edit.tsx)",
+        "issue": "No back button or 'Edit Profile' header visible on screen. Root cause: profile/_layout.tsx sets screenOptions={{ headerShown: false }} globally for the profile group. edit.tsx sets Stack.Screen options with title: 'Edit Profile' and headerBackTitle: 'Back' but does NOT override headerShown: true, so the header is suppressed. Users have no way to navigate back from edit profile.",
+        "testID": "N/A",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase_profit_orders.py",
+    "/app/test_reports/pytest/phase_profit_orders.xml"
+  ],
+  "action_items": [
+    "Fix Edit Profile back button: In /app/frontend/app/profile/edit.tsx, add headerShown: true to the Stack.Screen options so the 'Edit Profile' header and 'Back' navigation button are visible. The profile/_layout.tsx globally sets headerShown: false which suppresses the header.",
+    "Verify: After fixing edit.tsx, the header should show 'Edit Profile' title with a back chevron/button."
+  ],
+  "critical_code_review_comments": [
+    "admin.py (line ~143): MongoDB order.created_at is returned as naive datetime (no tzinfo). The profit loop compares it against today_start/last7/last_month which are UTC-aware. Fixed by normalising: if created.tzinfo is None: created = created.replace(tzinfo=timezone.utc).",
+    "profile/_layout.tsx: headerShown: false is set at group level. Any screen needing a header must explicitly set headerShown: true in its own Stack.Screen options.",
+    "cartStore.ts subtotal() uses (l.product.selling_price ?? l.product.price) — correct.",
+    "cart.tsx display uses (item.product.selling_price ?? item.product.price) — correct.",
+    "orders.py POST /orders: selling_price, self_price, mrp are correctly snapshotted from product into each order item."
+  ],
+  "updated_files": [
+    "/app/backend/routes/admin.py — fixed offset-naive vs offset-aware datetime comparison in profit loop",
+    "/app/backend/tests/test_phase_profit_orders.py — new test file (17 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 passed after fix)",
+    "frontend": "90% — 9/10 feature checks pass; Edit Profile header/back button not visible"
+  },
+  "seed_data_creation": "Created 2 test orders (TEST_Profit Tester) via POST /api/orders during testing. One order advanced to 'delivered' status to verify profit calculation end-to-end.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 18 fixed the critical 500 on GET /api/admin/dashboard (datetime timezone mismatch). All profit dashboard fields now return correctly (today/week/month/lifetime + top_profitable + profit_categories). Delivered orders in admin orders view correctly show Order Profit highlighted in green. Profile has no Wishlist. Cart uses selling_price??price. Only remaining issue: edit profile has no back button due to profile/_layout.tsx headerShown:false override. After main agent fix, run: pytest /app/backend/tests/test_phase_profit_orders.py -v and check profile/edit UI.",
+  "rca_of_issue": "Bug: GET /api/admin/dashboard returned 500. RCA: In routes/admin.py profit analytics loop, the code iterates over delivered orders and compares order.created_at (a naive datetime returned by Motor/MongoDB) against today_start, last7, last_month (all datetime objects constructed with timezone.utc — they are offset-aware). Python raises TypeError when comparing naive vs aware datetimes. Fix: before comparison, check if created.tzinfo is None and if so normalise with created.replace(tzinfo=timezone.utc). This is a common Motor/MongoDB pattern — Motor returns naive datetime objects by default even for UTC-stored dates."
+}

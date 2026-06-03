@@ -91,6 +91,80 @@ async def admin_dashboard(_: dict = Depends(require_admin)):
     ]
     top_products = [d async for d in db.orders.aggregate(top_products_pipeline)]
 
+    # -------- Profit analytics (Delivered orders only) --------
+    # margin_per_item = selling_price - self_price
+    # order_profit  = margin_per_item * quantity
+    # IMPORTANT: skip items missing selling_price or self_price (historical data).
+    today_profit = 0.0
+    week_profit = 0.0
+    month_profit = 0.0
+    lifetime_profit = 0.0
+    last_month = now - timedelta(days=30)
+    profit_by_product: dict[str, dict] = {}
+    profit_by_category: dict[str, float] = {}
+
+    # Pull product->category map once for fast lookup
+    cat_map: dict[str, str] = {}
+    async for p in db.products.find({}, {"_id": 0, "product_id": 1, "category": 1}):
+        cat_map[p["product_id"]] = p.get("category", "Uncategorized")
+
+    # NOTE: DB stores status lowercase ("delivered"). Spec says exactly "Delivered".
+    # Match either casing so this works regardless of seed/data formatting.
+    async for order in db.orders.find(
+        {"status": {"$in": ["Delivered", "delivered"]}},
+        {"_id": 0, "items": 1, "created_at": 1},
+    ):
+        order_total_profit = 0.0
+        created = order.get("created_at")
+        for it in order.get("items", []):
+            sp = it.get("selling_price")
+            cp = it.get("self_price")
+            qty = it.get("quantity", 0) or 0
+            if sp is None or cp is None or qty <= 0:
+                continue  # skip historical items missing snapshot
+            try:
+                margin = float(sp) - float(cp)
+            except (TypeError, ValueError):
+                continue
+            order_profit = margin * qty
+            order_total_profit += order_profit
+
+            pid = it.get("product_id") or "unknown"
+            name = it.get("name") or "—"
+            agg = profit_by_product.setdefault(pid, {"name": name, "qty": 0, "profit": 0.0})
+            agg["qty"] += qty
+            agg["profit"] += order_profit
+
+            cat = cat_map.get(pid, "Uncategorized")
+            profit_by_category[cat] = profit_by_category.get(cat, 0.0) + order_profit
+
+        lifetime_profit += order_total_profit
+        if created:
+            # MongoDB may return naive datetimes; normalise to UTC-aware for comparison.
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            if created >= today_start:
+                today_profit += order_total_profit
+            if created >= last7:
+                week_profit += order_total_profit
+            if created >= last_month:
+                month_profit += order_total_profit
+
+    top_profitable = sorted(
+        [
+            {"product_id": pid, "name": v["name"], "qty": v["qty"], "profit": round(v["profit"], 2)}
+            for pid, v in profit_by_product.items()
+        ],
+        key=lambda x: x["profit"],
+        reverse=True,
+    )[:5]
+
+    profit_categories = sorted(
+        [{"category": k, "profit": round(v, 2)} for k, v in profit_by_category.items()],
+        key=lambda x: x["profit"],
+        reverse=True,
+    )
+
     # User and ticket counts
     users_total = await db.users.count_documents({})
     users_new_7d = await db.users.count_documents({"created_at": {"$gte": last7}})
@@ -116,6 +190,14 @@ async def admin_dashboard(_: dict = Depends(require_admin)):
         "users": {"total": users_total, "new_7d": users_new_7d},
         "tickets": {"open": tickets_open, "total": tickets_total},
         "products": {"total": products_total, "low_stock": products_low_stock},
+        "profit": {
+            "today": round(today_profit, 2),
+            "week": round(week_profit, 2),
+            "month": round(month_profit, 2),
+            "lifetime": round(lifetime_profit, 2),
+        },
+        "top_profitable": top_profitable,
+        "profit_categories": profit_categories,
     }
 
 

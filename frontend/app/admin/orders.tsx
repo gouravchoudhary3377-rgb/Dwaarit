@@ -194,6 +194,53 @@ function OrderCard({
         </Text>
       </View>
 
+      {/* Pricing breakdown (shown for all orders, highlighted for Delivered) */}
+      {(() => {
+        const isDelivered = order.status === 'delivered';
+        let orderProfit = 0;
+        const hasMargin = order.items.some(
+          (it) => it.selling_price != null && it.self_price != null,
+        );
+        if (!hasMargin) return null;
+        order.items.forEach((it) => {
+          if (it.selling_price != null && it.self_price != null) {
+            orderProfit += (it.selling_price - it.self_price) * it.quantity;
+          }
+        });
+        return (
+          <View style={[styles.profitBox, isDelivered && styles.profitBoxDelivered]}>
+            <View style={styles.profitRow}>
+              <Text style={styles.profitLabel}>Selling Price</Text>
+              <Text style={styles.profitVal}>
+                {formatINR(order.items.reduce((s, it) => s + (it.selling_price ?? it.price) * it.quantity, 0))}
+              </Text>
+            </View>
+            {order.items.some((it) => it.mrp) ? (
+              <View style={styles.profitRow}>
+                <Text style={styles.profitLabel}>MRP Total</Text>
+                <Text style={styles.profitVal}>
+                  {formatINR(order.items.reduce((s, it) => s + (it.mrp ?? it.price) * it.quantity, 0))}
+                </Text>
+              </View>
+            ) : null}
+            <View style={styles.profitRow}>
+              <Text style={styles.profitLabel}>Self Price (Cost)</Text>
+              <Text style={styles.profitVal}>
+                {formatINR(order.items.reduce((s, it) => s + (it.self_price ?? 0) * it.quantity, 0))}
+              </Text>
+            </View>
+            {isDelivered && (
+              <View style={[styles.profitRow, styles.profitTotalRow]}>
+                <Text style={styles.profitTotalLabel}>Order Profit</Text>
+                <Text style={[styles.profitTotalVal, { color: orderProfit >= 0 ? '#1E8E3E' : '#C5221F' }]}>
+                  {formatINR(orderProfit)}
+                </Text>
+              </View>
+            )}
+          </View>
+        );
+      })()}
+
       {/* Status timeline */}
       <View style={styles.timeline}>
         {(['pending', 'accepted', 'out_for_delivery', 'delivered'] as Status[]).map((s, i) => {
@@ -516,6 +563,30 @@ const styles = StyleSheet.create({
   tlNodeActive: { backgroundColor: colors.primary },
   tlBar: { flex: 1, height: 3, backgroundColor: colors.border, marginHorizontal: 2 },
   tlBarActive: { backgroundColor: colors.primary },
+
+  // Profit breakdown box
+  profitBox: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: radii.md,
+    padding: spacing.sm,
+    gap: 4,
+  },
+  profitBoxDelivered: {
+    backgroundColor: '#E7F8EC',
+    borderColor: '#1E8E3E',
+    borderWidth: 1,
+  },
+  profitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  profitLabel: { ...typography.tiny, color: colors.textSecondary, fontWeight: '500' as const },
+  profitVal: { ...typography.tiny, color: colors.textPrimary, fontWeight: '600' as const },
+  profitTotalRow: {
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#1E8E3E',
+  },
+  profitTotalLabel: { ...typography.captionBold, color: '#1E8E3E' },
+  profitTotalVal: { ...typography.bodyBold },
 
   // Actions
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 4 },

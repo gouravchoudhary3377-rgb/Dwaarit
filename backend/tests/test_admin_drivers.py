@@ -13,7 +13,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://dwaarit-grocery.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("EXPO_PUBLIC_BACKEND_URL", "https://order-analytics-26.preview.emergentagent.com").rstrip("/")
 
 ADMIN_EMAIL = "admin@dwaarit.com"
 ADMIN_PASSWORD = "Admin@123"

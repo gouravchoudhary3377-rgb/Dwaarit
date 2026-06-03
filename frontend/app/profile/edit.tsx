@@ -121,6 +121,7 @@ export default function EditProfileScreen() {
           title: 'Edit Profile',
           headerStyle: { backgroundColor: '#fff' },
           headerTitleStyle: { fontWeight: '700', color: '#1f2937' },
+          headerBackTitle: 'Back',
         }}
       />
       <KeyboardAvoidingView

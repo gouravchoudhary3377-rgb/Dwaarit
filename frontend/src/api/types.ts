@@ -131,6 +131,9 @@ export type OrderItem = {
   image_url: string;
   unit: string;
   price: number;
+  mrp?: number | null;
+  selling_price?: number | null;
+  self_price?: number | null;
   quantity: number;
   subtotal: number;
 };

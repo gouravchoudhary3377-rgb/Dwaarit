@@ -26,6 +26,9 @@ type Dashboard = {
   users: { total: number; new_7d: number };
   tickets: { open: number; total: number };
   products: { total: number; low_stock: number };
+  profit?: { today: number; week: number; month: number; lifetime: number };
+  top_profitable?: { product_id: string; name: string; qty: number; profit: number }[];
+  profit_categories?: { category: string; profit: number }[];
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -193,6 +196,53 @@ export default function AdminDashboard() {
           ))
         )}
       </View>
+
+      {/* ---- Profit Section ---- */}
+      {data.profit && (
+        <>
+          <Text style={[styles.cardTitle, { marginTop: spacing.lg, marginLeft: 4, color: '#1E8E3E' }]}>
+            Profit Analytics · Delivered Orders
+          </Text>
+          <View style={styles.row2}>
+            <StatCard label="TODAY · PROFIT" value={formatINR(data.profit.today)} color="#1E8E3E" />
+            <StatCard label="7-DAY · PROFIT" value={formatINR(data.profit.week)} color="#00838F" />
+          </View>
+          <View style={styles.row2}>
+            <StatCard label="30-DAY · PROFIT" value={formatINR(data.profit.month)} color="#1769E0" />
+            <StatCard label="LIFETIME PROFIT" value={formatINR(data.profit.lifetime)} color="#8E24AA" />
+          </View>
+
+          {data.top_profitable && data.top_profitable.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Top Profitable Products</Text>
+              {data.top_profitable.map((p, i) => (
+                <View key={p.product_id} style={styles.topRow}>
+                  <View style={[styles.topRank, { backgroundColor: '#E7F8EC' }]}>
+                    <Text style={[styles.topRankText, { color: '#1E8E3E' }]}>{i + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.topName} numberOfLines={1}>{p.name}</Text>
+                    <Text style={styles.topSub}>{p.qty} sold</Text>
+                  </View>
+                  <Text style={[styles.topRev, { color: '#1E8E3E' }]}>{formatINR(p.profit)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {data.profit_categories && data.profit_categories.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Profit by Category</Text>
+              {data.profit_categories.map((c) => (
+                <View key={c.category} style={styles.statusRow}>
+                  <Text style={[styles.statusLabel, { flex: 1 }]}>{c.category}</Text>
+                  <Text style={[styles.statusCount, { color: '#1E8E3E' }]}>{formatINR(c.profit)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </>
+      )}
 
       {/* Operational shortcuts */}
       <Text style={[styles.cardTitle, { marginTop: spacing.lg, marginLeft: 4 }]}>Shortcuts</Text>
