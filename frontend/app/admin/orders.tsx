@@ -1,19 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   FlatList,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { router } from 'expo-router';
 
 import { api, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
@@ -267,6 +272,12 @@ function OrderCard({
         ) : (
           <View style={{ flex: 1 }} />
         )}
+        <Pressable
+          onPress={() => router.push({ pathname: '/order/[id]/chat', params: { id: order.order_id } })}
+          style={({ pressed }) => [styles.actionChat, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={styles.actionChatText}>💬</Text>
+        </Pressable>
         {next ? (
           <Pressable
             onPress={() => onAdvance(order)}
@@ -308,6 +319,9 @@ export default function AdminOrders() {
   const [filter, setFilter] = useState<'live' | 'all' | Status>('live');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // OTP modal state
+  const [otpModal, setOtpModal] = useState<{ order: Order } | null>(null);
+  const [otpInput, setOtpInput] = useState('');
 
   // Re-render every 30s so "X min ago" stays fresh
   useEffect(() => {
@@ -327,6 +341,12 @@ export default function AdminOrders() {
     async (order: Order) => {
       const next = NEXT[order.status];
       if (!next || updatingId) return;
+      // If advancing to "delivered", show OTP modal instead
+      if (next === 'delivered') {
+        setOtpInput('');
+        setOtpModal({ order });
+        return;
+      }
       setUpdatingId(order.order_id);
       try {
         const updated = await api.patch<Order>(`/admin/orders/${order.order_id}/status`, { status: next }, token);
@@ -339,6 +359,26 @@ export default function AdminOrders() {
     },
     [token, updatingId, setLocalOrder],
   );
+
+  const onConfirmDelivery = useCallback(async () => {
+    if (!otpModal || updatingId) return;
+    const { order } = otpModal;
+    setUpdatingId(order.order_id);
+    setOtpModal(null);
+    try {
+      const updated = await api.patch<Order>(
+        `/admin/orders/${order.order_id}/status`,
+        { status: 'delivered', otp: otpInput.trim() },
+        token,
+      );
+      setLocalOrder(updated);
+    } catch (e: any) {
+      Alert.alert('OTP Error', e?.data?.detail || e?.message || 'Delivery failed');
+      setOtpModal({ order });
+    } finally {
+      setUpdatingId(null);
+    }
+  }, [otpModal, otpInput, token, updatingId, setLocalOrder]);
 
   const onCancel = useCallback(
     async (order: Order) => {
@@ -360,6 +400,39 @@ export default function AdminOrders() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
+      {/* OTP Delivery Modal */}
+      <Modal visible={!!otpModal} transparent animationType="fade" onRequestClose={() => setOtpModal(null)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🔐 Delivery OTP</Text>
+            <Text style={styles.modalSub}>
+              Ask the customer for their 4-digit delivery code for order #{otpModal?.order.order_id.slice(-6).toUpperCase()}
+            </Text>
+            <TextInput
+              style={styles.otpInput}
+              value={otpInput}
+              onChangeText={(t) => setOtpInput(t.replace(/[^0-9]/g, '').slice(0, 4))}
+              placeholder="Enter 4-digit OTP"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+              maxLength={4}
+              autoFocus
+            />
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => setOtpModal(null)} style={styles.modalBtnCancel}>
+                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={onConfirmDelivery}
+                disabled={otpInput.length !== 4}
+                style={[styles.modalBtnConfirm, otpInput.length !== 4 && { opacity: 0.5 }]}
+              >
+                <Text style={styles.modalBtnConfirmText}>Confirm Delivery</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
       {/* Header */}
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
@@ -601,6 +674,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   actionGhostText: { ...typography.captionBold, color: colors.textPrimary },
+  actionChat: {
+    width: 42, height: 42,
+    borderRadius: radii.pill,
+    backgroundColor: '#E8EAF6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  actionChatText: { fontSize: 18 },
   actionPrimary: {
     flex: 1,
     height: 42,
@@ -612,4 +692,47 @@ const styles = StyleSheet.create({
   },
   actionPrimaryHot: { backgroundColor: colors.primary, ...shadow.strong },
   actionPrimaryText: { ...typography.bodyBold, color: colors.white },
+
+  // OTP Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    width: '100%',
+    gap: spacing.md,
+  },
+  modalTitle: { ...typography.h2, color: colors.textPrimary, textAlign: 'center' },
+  modalSub: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  otpInput: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: radii.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    letterSpacing: 10,
+  },
+  modalBtns: { flexDirection: 'row', gap: spacing.sm },
+  modalBtnCancel: {
+    flex: 1, height: 48, borderRadius: radii.pill,
+    borderWidth: 1.5, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalBtnCancelText: { ...typography.bodyBold, color: colors.textSecondary },
+  modalBtnConfirm: {
+    flex: 2, height: 48, borderRadius: radii.pill,
+    backgroundColor: '#1E8E3E',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalBtnConfirmText: { ...typography.bodyBold, color: colors.white },
 });

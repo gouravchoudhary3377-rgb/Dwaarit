@@ -80,4 +80,5 @@ export type {
   SavedAddressApi,
   AuditLogEntry,
   LoginHistoryEntry,
+  ChatMessage,
 } from './types';

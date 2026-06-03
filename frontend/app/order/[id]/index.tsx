@@ -96,6 +96,10 @@ export default function OrderDetail() {
   const walletApplied = order.wallet_applied ?? 0;
   const payable = order.payable ?? order.total;
   const isLive = ['pending', 'accepted', 'out_for_delivery'].includes(order.status);
+  const showOtp = order.status === 'out_for_delivery' && order.delivery_otp;
+  const isChatActive = ['accepted', 'out_for_delivery'].includes(order.status);
+
+  const onChatRider = () => router.push({ pathname: '/order/[id]/chat', params: { id: order.order_id } });
 
   const onDownloadInvoice = async () => {
     try {
@@ -293,9 +297,22 @@ export default function OrderDetail() {
 
         {/* CTAs */}
         <View style={{ gap: spacing.sm }}>
+          {/* Delivery OTP — shown when rider is out for delivery */}
+          {showOtp && (
+            <View style={styles.otpCard}>
+              <Text style={styles.otpLabel}>🔐 Delivery Code</Text>
+              <Text style={styles.otpHint}>Share this code with your rider to confirm delivery</Text>
+              <Text style={styles.otpCode}>{order.delivery_otp}</Text>
+            </View>
+          )}
           {isLive ? (
             <Pressable onPress={onTrackLive} style={[styles.cta, styles.ctaPrimary]} android_ripple={{ color: '#ffffff22' }}>
               <Text style={styles.ctaPrimaryText}>Track live on map</Text>
+            </Pressable>
+          ) : null}
+          {isChatActive ? (
+            <Pressable onPress={onChatRider} style={[styles.cta, styles.ctaChat]} android_ripple={{ color: '#ffffff22' }}>
+              <Text style={styles.ctaChatText}>💬 Chat with Rider</Text>
             </Pressable>
           ) : null}
           <Pressable onPress={onDownloadInvoice} style={[styles.cta, styles.ctaSecondary]} android_ripple={{ color: colors.primarySoft }}>
@@ -519,10 +536,32 @@ const styles = StyleSheet.create({
   },
   ctaPrimary: { backgroundColor: colors.primary, ...shadow.soft },
   ctaPrimaryText: { ...typography.bodyBold, color: colors.white },
+  ctaChat: { backgroundColor: '#1769E0', ...shadow.soft },
+  ctaChatText: { ...typography.bodyBold, color: colors.white },
   ctaSecondary: {
     backgroundColor: colors.white,
     borderWidth: 1.5,
     borderColor: colors.primary,
   },
   ctaSecondaryText: { ...typography.bodyBold, color: colors.primary },
+
+  // OTP card
+  otpCard: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#FFB300',
+    alignItems: 'center',
+    gap: 6,
+  },
+  otpLabel: { ...typography.bodyBold, color: '#7B4F00' },
+  otpHint: { ...typography.caption, color: '#9E6B00', textAlign: 'center' },
+  otpCode: {
+    fontSize: 40,
+    fontWeight: '900',
+    color: '#E65100',
+    letterSpacing: 10,
+    marginTop: 4,
+  },
 });

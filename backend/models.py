@@ -169,6 +169,12 @@ OrderStatus = Literal["pending", "accepted", "out_for_delivery", "delivered", "c
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
+    otp: Optional[str] = None  # Required when transitioning to "delivered"
+
+
+# ---------- Order Chat ----------
+class ChatMessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=500)
 
 
 # ---------- Wishlist ----------

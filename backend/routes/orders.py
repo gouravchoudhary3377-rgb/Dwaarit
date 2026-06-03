@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import random
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import db
-from models import OrderIn, OrderStatusUpdate
+from models import OrderIn, OrderStatusUpdate, ChatMessageIn
 from routes.coupons import calculate_discount, _check_eligibility, _normalize_code
 from security import get_current_user, require_admin
 
@@ -205,10 +206,23 @@ async def admin_update_order_status(
     order = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
     if not order:
         raise HTTPException(404, "Order not found")
-    await db.orders.update_one(
-        {"order_id": order_id},
-        {"$set": {"status": body.status, "updated_at": datetime.now(timezone.utc)}},
-    )
+
+    update_fields: dict = {"status": body.status, "updated_at": datetime.now(timezone.utc)}
+
+    # Generate delivery OTP when moving to out_for_delivery
+    if body.status == "out_for_delivery" and order.get("status") != "out_for_delivery":
+        update_fields["delivery_otp"] = str(random.randint(1000, 9999))
+
+    # Validate OTP when marking as delivered
+    if body.status == "delivered":
+        stored_otp = order.get("delivery_otp")
+        if stored_otp:
+            if not body.otp:
+                raise HTTPException(400, "Delivery OTP is required to mark this order as delivered")
+            if body.otp.strip() != stored_otp:
+                raise HTTPException(400, "Invalid delivery OTP. Please check the customer's code.")
+
+    await db.orders.update_one({"order_id": order_id}, {"$set": update_fields})
     # Refund to wallet if cancelled (Blinkit-style):
     #   • Always refund any wallet_applied portion.
     #   • Refund prepaid (razorpay) payable on top of that when payment_status == 'paid'.
@@ -230,3 +244,57 @@ async def admin_update_order_status(
             })
     doc = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
     return doc
+
+
+
+# -------- Order Chat --------
+def _is_chat_authorized(order: dict, user: dict) -> bool:
+    """Return True if user is allowed to access this order's chat."""
+    if user.get("role") in ("admin", "super_admin", "store_manager"):
+        return True
+    if order.get("user_id") == user["user_id"]:
+        return True
+    if order.get("driver_id") == user["user_id"]:
+        return True
+    return False
+
+
+@router.get("/orders/{order_id}/chat")
+async def get_order_chat(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"order_id": order_id}, {"_id": 0, "user_id": 1, "driver_id": 1})
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if not _is_chat_authorized(order, user):
+        raise HTTPException(403, "Forbidden")
+    messages = await db.chat_messages.find(
+        {"order_id": order_id}, {"_id": 0}
+    ).sort("created_at", 1).to_list(200)
+    return messages
+
+
+@router.post("/orders/{order_id}/chat")
+async def send_chat_message(
+    order_id: str, body: ChatMessageIn, user: dict = Depends(get_current_user)
+):
+    order = await db.orders.find_one(
+        {"order_id": order_id},
+        {"_id": 0, "user_id": 1, "driver_id": 1, "status": 1},
+    )
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if not _is_chat_authorized(order, user):
+        raise HTTPException(403, "Forbidden")
+    if order.get("status") in ("delivered", "cancelled"):
+        raise HTTPException(400, "Chat is only available for active orders")
+    msg = {
+        "message_id": f"msg_{uuid.uuid4().hex[:12]}",
+        "order_id": order_id,
+        "sender_id": user["user_id"],
+        "sender_name": user.get("name", ""),
+        "sender_role": user.get("role", "customer"),
+        "content": body.content.strip(),
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.chat_messages.insert_one(msg)
+    msg.pop("_id", None)
+    return msg

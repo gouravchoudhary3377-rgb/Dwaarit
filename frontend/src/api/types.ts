@@ -160,6 +160,7 @@ export type Order = {
   payment_status?: 'pending' | 'paid' | 'cod' | 'failed';
   notes: string;
   status: 'pending' | 'accepted' | 'out_for_delivery' | 'delivered' | 'cancelled';
+  delivery_otp?: string | null;
   created_at: string;
   updated_at: string;
   // Set after a rider is assigned to the order
@@ -169,6 +170,17 @@ export type Order = {
   driver_vehicle?: string | null;
   driver_status?: string | null;
   assigned_at?: string | null;
+};
+
+// ---------- Chat ----------
+export type ChatMessage = {
+  message_id: string;
+  order_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: string;
+  content: string;
+  created_at: string;
 };
 
 export type OrderDriverLocation =
