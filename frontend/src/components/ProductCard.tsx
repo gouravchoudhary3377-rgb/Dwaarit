@@ -56,7 +56,7 @@ export function ProductCard({ product, onPress }: Props) {
     return { mrp: mrpVal, discountPct: pct };
   }, [product.mrp, product.discount_percent, sellingPrice]);
 
-  const eta = product.delivery_eta_min ?? 12;
+  const eta = product.delivery_eta_min ?? 18;
 
   const handleAdd = () => {
     if (outOfStock) return;

@@ -136,7 +136,7 @@ async def _backfill_merchandising_fields() -> None:
                 updates["discount_percent"] = pct
 
         if not has_eta:
-            updates["delivery_eta_min"] = 12
+            updates["delivery_eta_min"] = 18
 
         if updates:
             await db.products.update_one(

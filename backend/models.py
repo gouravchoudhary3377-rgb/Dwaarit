@@ -69,7 +69,7 @@ class Product(BaseModel):
     selling_price: Optional[float] = None  # price after discount displayed on storefront
     self_price: Optional[float] = None     # cost price, super_admin only
     discount_percent: Optional[int] = None
-    delivery_eta_min: Optional[int] = 12
+    delivery_eta_min: Optional[int] = 18
     rating: Optional[float] = None
     rating_count: Optional[int] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -87,7 +87,7 @@ class ProductIn(BaseModel):
     selling_price: Optional[float] = None
     self_price: Optional[float] = None
     discount_percent: Optional[int] = None
-    delivery_eta_min: Optional[int] = 12
+    delivery_eta_min: Optional[int] = 18
 
 
 class ProductUpdate(BaseModel):

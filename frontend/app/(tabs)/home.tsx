@@ -157,7 +157,7 @@ export default function Home() {
           <View style={{ flex: 1 }}>
             <View style={styles.bannerTag}>
               <BoltIcon />
-              <Text style={styles.bannerTagText}>Delivery in 12 minutes</Text>
+              <Text style={styles.bannerTagText}>Delivery in 18 minutes</Text>
             </View>
             <Text style={styles.bannerTitle}>Free delivery on{'\n'}your first order</Text>
             <Text style={styles.bannerSub}>Use code DWAARIT50 · ₹50 off above ₹199</Text>
@@ -266,12 +266,6 @@ export default function Home() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* --- Sticky top: location + cart --- */}
       <View style={styles.topBar}>
-        {/* Dwaarit Logo */}
-        <Image
-          source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png' }}
-          style={styles.topBarLogo}
-          contentFit="contain"
-        />
         <Pressable
           style={styles.locWrap}
           hitSlop={8}
@@ -280,7 +274,7 @@ export default function Home() {
         >
           <View style={styles.boltChip}>
             <BoltIcon />
-            <Text style={styles.boltText}>12 min</Text>
+            <Text style={styles.boltText}>18 min</Text>
           </View>
           <View style={styles.locTextWrap}>
             <View style={styles.locTitleRow}>
