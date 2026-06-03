@@ -152,21 +152,18 @@ export default function Home() {
   const ListHeader = (
     <View>
       {/* Hero promo banner */}
-      <View style={styles.bannerOuter}>
-        <View style={styles.banner}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.bannerTag}>
-              <BoltIcon />
-              <Text style={styles.bannerTagText}>Delivery in 18 minutes</Text>
-            </View>
-            <Text style={styles.bannerTitle}>Free delivery on{'\n'}your first order</Text>
-            <Text style={styles.bannerSub}>Use code DWAARIT50 · ₹50 off above ₹199</Text>
-          </View>
-          <View style={styles.bannerArt}>
-            <Text style={styles.bannerEmoji}>🛒</Text>
-          </View>
-        </View>
-      </View>
+      <Pressable
+        style={styles.bannerOuter}
+        onPress={() => router.push('/(tabs)/home')}
+        activeOpacity={0.97}
+      >
+        <Image
+          source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/6lx36p54_ChatGPT%20Image%20Jun%203%2C%202026%2C%2003_29_07%20PM.png' }}
+          style={styles.heroBannerImg}
+          contentFit="cover"
+          transition={200}
+        />
+      </Pressable>
 
       {/* Categories grid */}
       <View style={styles.sectionWrap}>
@@ -449,6 +446,11 @@ const styles = StyleSheet.create({
 
   /* Banner */
   bannerOuter: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
+  heroBannerImg: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: radii.lg,
+  },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
