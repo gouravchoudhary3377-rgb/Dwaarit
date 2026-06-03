@@ -25,7 +25,7 @@ export default function Gate() {
   return (
     <View style={styles.container}>
       <DwaaritMark color={colors.primary} size={96} />
-      <Text style={styles.brand}>Dwaarit</Text>
+      <Text style={styles.brand}>Flynkit</Text>
       <Text style={styles.tag}>Fresh groceries at your doorstep</Text>
       <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />
     </View>

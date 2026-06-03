@@ -1,4 +1,4 @@
-// Thin REST client for the Dwaarit FastAPI backend.
+// Thin REST client for the Flynkit FastAPI backend.
 import Constants from 'expo-constants';
 
 const BACKEND_URL =

@@ -385,7 +385,7 @@ export default function Profile() {
             icon={IC.info('#455A64')}
             iconBg="#ECEFF1"
             iconColor="#455A64"
-            label="About Dwaarit"
+            label="About Flynkit"
             hint="Privacy, Terms & Contact"
             onPress={() => router.push('/about')}
             isLast

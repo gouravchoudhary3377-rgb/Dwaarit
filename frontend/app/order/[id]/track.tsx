@@ -423,7 +423,7 @@ export default function OrderTrack() {
           // On web, WebView is unsupported in expo-router preview; show an iframe-like fallback.
           <View style={[styles.mapInner, styles.center]}>
             <Text style={{ color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.lg }}>
-              Live map tracking is available on the mobile app. Tap “Track live on map” inside the Dwaarit app on your phone.
+              Live map tracking is available on the mobile app. Tap “Track live on map” inside the Flynkit app on your phone.
             </Text>
           </View>
         ) : (

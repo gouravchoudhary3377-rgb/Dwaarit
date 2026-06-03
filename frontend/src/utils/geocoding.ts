@@ -8,7 +8,7 @@
 import { Platform } from 'react-native';
 
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org';
-const USER_AGENT = 'Dwaarit/1.0 (grocery delivery app)';
+const USER_AGENT = 'Flynkit/1.0 (grocery delivery app)';
 
 export type NominatimAddress = {
   house_number?: string;

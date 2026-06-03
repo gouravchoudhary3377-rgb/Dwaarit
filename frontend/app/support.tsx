@@ -315,7 +315,7 @@ export default function SupportScreen() {
                 Hi {user?.name?.split(' ')[0] || 'there'} 👋
               </Text>
               <Text style={styles.welcomeSub}>
-                I'm Dwaarit Assistant. Ask me anything about orders, refunds, wallet, or delivery.
+                I'm Flynkit Assistant. Ask me anything about orders, refunds, wallet, or delivery.
               </Text>
               <View style={{ width: '100%', marginTop: spacing.lg, gap: 8 }}>
                 {SUGGESTIONS.map((s) => (

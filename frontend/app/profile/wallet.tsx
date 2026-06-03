@@ -153,7 +153,7 @@ export default function WalletScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
           <BackArrow />
         </Pressable>
-        <Text style={styles.headerTitle}>Dwaarit Wallet</Text>
+        <Text style={styles.headerTitle}>Flynkit Wallet</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -287,7 +287,7 @@ export default function WalletScreen() {
           keyId={rzp.keyId}
           orderId={rzp.orderId}
           amount={rzp.amount}
-          name="Dwaarit Wallet"
+          name="Flynkit Wallet"
           description="Wallet top-up"
           prefill={{ name: user?.name, email: user?.email, contact: user?.mobile || '' }}
           themeColor={colors.primary}

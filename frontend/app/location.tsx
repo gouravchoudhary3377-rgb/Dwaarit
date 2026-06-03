@@ -191,7 +191,7 @@ export default function LocationScreen() {
         if (!perm.canAskAgain) {
           Alert.alert(
             'Location permission blocked',
-            'Please enable location access for Dwaarit in Settings to auto-detect your address.',
+            'Please enable location access for Flynkit in Settings to auto-detect your address.',
             [
               { text: 'Cancel', style: 'cancel' },
               { text: 'Open Settings', onPress: () => Linking.openSettings() },

@@ -1,11 +1,11 @@
-// Custom abstract geometric SVG icons for Dwaarit's bottom nav.
+// Custom abstract geometric SVG icons for Flynkit's bottom nav.
 // Per design_guidelines: NO generic houses, bags, receipts or person silhouettes.
 import React from 'react';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 type IconProps = { color: string; size?: number };
 
-// Nested arches forming an abstract doorway (Dwaarit = 'doorway').
+// Nested arches forming an abstract doorway (Flynkit).
 export function HomeIcon({ color, size = 26 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">

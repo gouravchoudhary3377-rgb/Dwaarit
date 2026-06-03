@@ -14,7 +14,7 @@ from security import get_current_user, require_admin
 router = APIRouter(prefix="/support", tags=["support"])
 
 SYSTEM_PROMPT = (
-    "You are Dwaarit's friendly customer support assistant for an Indian grocery delivery app "
+    "You are Flynkit's friendly customer support assistant for an Indian grocery delivery app "
     "(similar to Blinkit). Help users with: order status, refunds, payment issues, address changes, "
     "wallet usage, delivery timing (10-20 mins), product availability, and account questions. "
     "Be concise, polite, and use INR (\u20b9) for prices. If a user reports a problem that you cannot "

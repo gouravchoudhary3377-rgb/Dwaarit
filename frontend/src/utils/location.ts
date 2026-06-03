@@ -1,4 +1,4 @@
-// Dwaarit location utilities — expo-location + OpenStreetMap Nominatim.
+// Flynkit location utilities — expo-location + OpenStreetMap Nominatim.
 // Free (no API key). Adheres to <handle_permissions_contract>.
 
 import * as Location from 'expo-location';
@@ -79,7 +79,7 @@ export async function requestCurrentLocation(): Promise<PermissionOutcome> {
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 // Required by Nominatim usage policy — identify the app.
-const UA = 'DwaaritGroceryApp/1.0 (support@dwaarit.app)';
+const UA = 'FlynkitGroceryApp/1.0 (support@dwaarit.app)';
 
 async function nominatim<T>(path: string): Promise<T> {
   const res = await fetch(`${NOMINATIM}${path}`, {

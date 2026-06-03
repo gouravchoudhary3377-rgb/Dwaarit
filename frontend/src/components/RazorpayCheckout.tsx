@@ -38,7 +38,7 @@ function buildCheckoutHtml(p: Props): string {
   <title>Pay</title>
   <style>body{margin:0;font-family:-apple-system,Roboto,sans-serif;background:#FFF8F1;color:#1F2937;display:flex;align-items:center;justify-content:center;min-height:100vh;}.card{padding:24px 20px;text-align:center;}.btn{margin-top:16px;background:${safe(p.themeColor || '#F97316')};color:#fff;border:0;padding:14px 24px;border-radius:999px;font-size:16px;font-weight:700;}</style>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script></head>
-  <body><div class="card"><h2 style="margin:0 0 6px">${safe(p.name || 'Dwaarit Payment')}</h2><p style="margin:0;color:#6B7280;">${safe(p.description || 'Secure payment via Razorpay')}</p><button id="go" class="btn">Open Razorpay</button></div>
+  <body><div class="card"><h2 style="margin:0 0 6px">${safe(p.name || 'Flynkit Payment')}</h2><p style="margin:0;color:#6B7280;">${safe(p.description || 'Secure payment via Razorpay')}</p><button id="go" class="btn">Open Razorpay</button></div>
   <script>
   function send(msg){ try{ window.ReactNativeWebView.postMessage(JSON.stringify(msg)); }catch(e){} }
   function openCheckout(){
@@ -46,7 +46,7 @@ function buildCheckoutHtml(p: Props): string {
       key: '${safe(p.keyId)}',
       amount: ${p.amount},
       currency: '${safe(p.currency || 'INR')}',
-      name: '${safe(p.name || 'Dwaarit')}',
+      name: '${safe(p.name || 'Flynkit')}',
       description: '${safe(p.description || 'Order Payment')}',
       order_id: '${safe(p.orderId)}',
       prefill: { name: '${safe(p.prefill?.name)}', email: '${safe(p.prefill?.email)}', contact: '${safe(p.prefill?.contact)}' },
@@ -82,7 +82,7 @@ function buildMockHtml(p: Props): string {
     .fail{background:#fff;border:1.5px solid #E5E7EB;color:#374151}
     .cancel{background:transparent;color:#6B7280;margin-top:4px}
   </style></head><body><div class="wrap">
-  <h2>${p.name || 'Dwaarit'} — Mock Payment</h2>
+  <h2>${p.name || 'Flynkit'} — Mock Payment</h2>
   <div class="muted">Razorpay keys are not configured on the server.</div>
   <div class="pill">TEST / MOCK MODE</div>
   <div class="card">
@@ -150,7 +150,7 @@ export function RazorpayCheckout(props: Props) {
           orderId={props.orderId}
           amount={props.amount}
           currency={props.currency || 'INR'}
-          name={props.name || 'Dwaarit'}
+          name={props.name || 'Flynkit'}
           description={props.description || 'Order payment'}
           onSuccess={onSuccess}
           onFailure={onFailure}

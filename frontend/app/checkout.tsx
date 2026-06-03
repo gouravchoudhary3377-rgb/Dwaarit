@@ -668,7 +668,7 @@ export default function Checkout() {
           testID="pay-wallet"
           selected={payMethod === 'wallet'}
           onPress={() => setPayMethod('wallet')}
-          title="Dwaarit Wallet"
+          title="Flynkit Wallet"
           subtitle={`Balance: ${formatINR(walletBal)}`}
           badge="Wallet"
           disabled={walletBal <= 0}
@@ -751,7 +751,7 @@ export default function Checkout() {
           keyId={rzp.keyId}
           orderId={rzp.orderId}
           amount={rzp.amount}
-          name="Dwaarit Order"
+          name="Flynkit Order"
           description={`Payment for ${rzp.internalOrderId}`}
           prefill={{ name: user?.name, email: user?.email, contact: user?.mobile || '' }}
           themeColor={colors.primary}

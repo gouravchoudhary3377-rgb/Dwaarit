@@ -1,4 +1,4 @@
-// Dwaarit design tokens — keep in sync with /app/design_guidelines.json
+// Flynkit design tokens — keep in sync with /app/design_guidelines.json
 import { Platform } from 'react-native';
 
 export const colors = {

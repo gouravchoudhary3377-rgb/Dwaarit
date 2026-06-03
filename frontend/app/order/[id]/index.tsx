@@ -374,7 +374,7 @@ function buildInvoiceHTML(inv: Invoice): string {
 <body>
   <div class="row">
     <div>
-      <h1>Dwaarit</h1>
+      <h1>Flynkit</h1>
       <div class="muted">Fresh groceries · 10-min delivery</div>
     </div>
     <div style="text-align:right">
@@ -413,7 +413,7 @@ function buildInvoiceHTML(inv: Invoice): string {
     <div class="r grand"><span>Payable</span><span>${fmt(inv.payable)}</span></div>
   </div>
 
-  <div class="muted" style="margin-top:32px;text-align:center">Thank you for shopping with Dwaarit · This is a system-generated invoice</div>
+  <div class="muted" style="margin-top:32px;text-align:center">Thank you for shopping with Flynkit · This is a system-generated invoice</div>
 </body></html>`;
 }
 

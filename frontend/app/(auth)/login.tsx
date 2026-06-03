@@ -128,7 +128,7 @@ export default function Login() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>New to Dwaarit?</Text>
+          <Text style={styles.footerText}>New to Flynkit?</Text>
           <Link href="/(auth)/signup" asChild>
             <Pressable hitSlop={8}>
               <Text style={styles.footerLink}>Create an account</Text>

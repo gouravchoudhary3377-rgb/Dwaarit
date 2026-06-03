@@ -9,9 +9,9 @@ import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 type SectionKey = 'about' | 'privacy' | 'terms' | 'contact';
 
 const SECTIONS: { key: SectionKey; title: string; subtitle: string }[] = [
-  { key: 'about', title: 'About Dwaarit', subtitle: 'Groceries in 10 minutes. Always fresh.' },
+  { key: 'about', title: 'About Flynkit', subtitle: 'Groceries in 10 minutes. Always fresh.' },
   { key: 'privacy', title: 'Privacy Policy', subtitle: 'How we collect, use & protect your data' },
-  { key: 'terms', title: 'Terms of Service', subtitle: 'The rules that govern your use of Dwaarit' },
+  { key: 'terms', title: 'Terms of Service', subtitle: 'The rules that govern your use of Flynkit' },
   { key: 'contact', title: 'Contact Us', subtitle: 'Reach out — we usually reply within an hour' },
 ];
 
@@ -29,7 +29,7 @@ export default function AboutScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
           <BackIcon color={colors.textPrimary} />
         </Pressable>
-        <Text style={styles.headerTitle}>About Dwaarit</Text>
+        <Text style={styles.headerTitle}>About Flynkit</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -45,7 +45,7 @@ export default function AboutScreen() {
                 style={[styles.tab, isActive && styles.tabActive]}
               >
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]} numberOfLines={1}>
-                  {s.title.replace('About Dwaarit', 'About').replace('Privacy Policy', 'Privacy').replace('Terms of Service', 'Terms').replace('Contact Us', 'Contact')}
+                  {s.title.replace('About Flynkit', 'About').replace('Privacy Policy', 'Privacy').replace('Terms of Service', 'Terms').replace('Contact Us', 'Contact')}
                 </Text>
               </Pressable>
             );
@@ -57,7 +57,7 @@ export default function AboutScreen() {
         {active === 'terms' && <TermsSection />}
         {active === 'contact' && <ContactSection />}
 
-        <Text style={styles.footerNote}>© {new Date().getFullYear()} Dwaarit. Made with care in India.</Text>
+        <Text style={styles.footerNote}>© {new Date().getFullYear()} Flynkit. Made with care in India.</Text>
       </ScrollView>
     </View>
   );
@@ -94,12 +94,12 @@ function AboutSection() {
             <Text style={styles.brandLogoText}>D</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.brandName}>Dwaarit</Text>
+            <Text style={styles.brandName}>Flynkit</Text>
             <Text style={styles.brandTagline}>Groceries in minutes, every time.</Text>
           </View>
         </View>
         <P>
-          Dwaarit is your neighbourhood quick-commerce app for daily essentials. From farm-fresh produce to packaged staples,
+          Flynkit is your neighbourhood quick-commerce app for daily essentials. From farm-fresh produce to packaged staples,
           we deliver hand-picked groceries to your doorstep in 10 minutes — at honest prices.
         </P>
       </Card>
@@ -111,7 +111,7 @@ function AboutSection() {
         </P>
       </Card>
 
-      <Card title="Why people love Dwaarit">
+      <Card title="Why people love Flynkit">
         <Bullet>10-minute delivery from our nearest dark store, 7 days a week.</Bullet>
         <Bullet>Over 5,000 daily essentials — fruits, vegetables, dairy, snacks, household & personal care.</Bullet>
         <Bullet>100% freshness guarantee — if it&apos;s not fresh, we refund instantly.</Bullet>
@@ -133,7 +133,7 @@ function PrivacySection() {
       <Card title="Privacy Policy">
         <Text style={styles.muted}>Last updated: June 2025</Text>
         <P>
-          At Dwaarit, we respect your privacy and are committed to protecting your personal information. This policy explains
+          At Flynkit, we respect your privacy and are committed to protecting your personal information. This policy explains
           what we collect, why we collect it, and the choices you have.
         </P>
       </Card>
@@ -162,7 +162,7 @@ function PrivacySection() {
 
       <Card title="Your choices">
         <Bullet>Update your name, email and addresses anytime from Profile.</Bullet>
-        <Bullet>Request account deletion by writing to support@dwaarit.com.</Bullet>
+        <Bullet>Request account deletion by writing to support@flynkit.com.</Bullet>
         <Bullet>Opt out of promotional notifications from your device settings.</Bullet>
       </Card>
 
@@ -174,11 +174,11 @@ function PrivacySection() {
       </Card>
 
       <Card title="Children">
-        <P>Dwaarit is intended for users aged 18 and above. We do not knowingly collect personal data from minors.</P>
+        <P>Flynkit is intended for users aged 18 and above. We do not knowingly collect personal data from minors.</P>
       </Card>
 
       <Card title="Contact our DPO">
-        <P>For privacy-related questions, write to <Text style={styles.bold}>privacy@dwaarit.com</Text>. We respond within 7 working days.</P>
+        <P>For privacy-related questions, write to <Text style={styles.bold}>privacy@flynkit.com</Text>. We respond within 7 working days.</P>
       </Card>
     </>
   );
@@ -190,13 +190,13 @@ function TermsSection() {
       <Card title="Terms of Service">
         <Text style={styles.muted}>Last updated: June 2025</Text>
         <P>
-          By creating an account or placing an order on Dwaarit, you agree to be bound by these Terms of Service. Please read
+          By creating an account or placing an order on Flynkit, you agree to be bound by these Terms of Service. Please read
           them carefully.
         </P>
       </Card>
 
       <Card title="Your account">
-        <Bullet>You must be at least 18 years old to use Dwaarit.</Bullet>
+        <Bullet>You must be at least 18 years old to use Flynkit.</Bullet>
         <Bullet>Provide accurate information when signing up and keep it up to date.</Bullet>
         <Bullet>You are responsible for all activity that happens under your account.</Bullet>
       </Card>
@@ -211,7 +211,7 @@ function TermsSection() {
       <Card title="Pricing, payments & refunds">
         <Bullet>All prices are inclusive of applicable taxes unless stated otherwise.</Bullet>
         <Bullet>We support UPI, cards, wallets and cash on delivery (where available).</Bullet>
-        <Bullet>Refunds for returned, missing or damaged items are processed within 5–7 working days to your original method or Dwaarit Wallet.</Bullet>
+        <Bullet>Refunds for returned, missing or damaged items are processed within 5–7 working days to your original method or Flynkit Wallet.</Bullet>
       </Card>
 
       <Card title="Cancellations & returns">
@@ -227,7 +227,7 @@ function TermsSection() {
 
       <Card title="Limitation of liability">
         <P>
-          To the extent permitted by law, Dwaarit is not liable for indirect, incidental, or consequential damages arising from
+          To the extent permitted by law, Flynkit is not liable for indirect, incidental, or consequential damages arising from
           your use of the app. Our total liability for any claim is limited to the value of the order in question.
         </P>
       </Card>
@@ -250,15 +250,15 @@ function ContactSection() {
         <P>Reach out anytime — our in-app AI assistant replies instantly and our human team takes over when needed.</P>
       </Card>
       <Card title="Email">
-        <Text style={styles.bold}>support@dwaarit.com</Text>
+        <Text style={styles.bold}>support@flynkit.com</Text>
         <Text style={styles.muted}>For order issues, refunds, and general queries.</Text>
       </Card>
       <Card title="Privacy">
-        <Text style={styles.bold}>privacy@dwaarit.com</Text>
+        <Text style={styles.bold}>privacy@flynkit.com</Text>
         <Text style={styles.muted}>For data, privacy and account deletion requests.</Text>
       </Card>
       <Card title="Registered address">
-        <P>Dwaarit Retail Pvt. Ltd.\n4th Floor, Embassy Tech Square,\nBengaluru, Karnataka 560103, India.</P>
+        <P>Flynkit Retail Pvt. Ltd.\n4th Floor, Embassy Tech Square,\nBengaluru, Karnataka 560103, India.</P>
       </Card>
     </>
   );

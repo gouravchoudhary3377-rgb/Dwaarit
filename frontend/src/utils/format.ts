@@ -1,4 +1,4 @@
-// Currency & number formatting helpers for Dwaarit.
+// Currency & number formatting helpers for Flynkit.
 
 /**
  * Format an amount as Indian Rupees with grouping (lakhs/crores style),

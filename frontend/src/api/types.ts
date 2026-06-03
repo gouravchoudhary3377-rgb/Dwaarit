@@ -1,5 +1,5 @@
 /**
- * Centralized TypeScript types for the Dwaarit API.
+ * Centralized TypeScript types for the Flynkit API.
  *
  * NOTE: client.ts and profile.ts re-export from here for backward compatibility.
  * New code should import directly from '@/src/api/types'.
