@@ -119,6 +119,7 @@ export default function EditProfileScreen() {
       <Stack.Screen
         options={{
           title: 'Edit Profile',
+          headerShown: true,
           headerStyle: { backgroundColor: '#fff' },
           headerTitleStyle: { fontWeight: '700', color: '#1f2937' },
           headerBackTitle: 'Back',
