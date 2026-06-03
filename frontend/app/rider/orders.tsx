@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -30,9 +31,51 @@ type RiderOrder = {
   payable?: number;
   payment_method?: string;
   items: { name: string; quantity: number }[];
-  address: { full_name: string; phone: string; line1: string; city: string; pincode: string };
+  address: {
+    full_name: string;
+    phone: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    pincode: string;
+    lat?: number | null;
+    lng?: number | null;
+  };
   created_at: string;
 };
+
+function openNavigation(address: RiderOrder['address']) {
+  const label = encodeURIComponent(`${address.full_name} - ${address.line1}, ${address.city}`);
+  if (address.lat && address.lng) {
+    const lat = address.lat;
+    const lng = address.lng;
+    const url = Platform.OS === 'ios'
+      ? `maps://0,0?daddr=${lat},${lng}&dirflg=d`
+      : `google.navigation:q=${lat},${lng}`;
+    Linking.canOpenURL(url)
+      .then((can) => {
+        if (can) return Linking.openURL(url);
+        // Fallback: Google Maps web
+        return Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
+      })
+      .catch(() => {
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
+      });
+  } else {
+    const query = encodeURIComponent(`${address.line1}${address.line2 ? ', ' + address.line2 : ''}, ${address.city}, ${address.pincode}, India`);
+    const url = Platform.OS === 'ios'
+      ? `maps://0,0?daddr=${query}`
+      : `geo:0,0?q=${query}(${label})`;
+    Linking.canOpenURL(url)
+      .then((can) => {
+        if (can) return Linking.openURL(url);
+        return Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`);
+      })
+      .catch(() => {
+        Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`);
+      });
+  }
+}
 
 type Filter = 'active' | 'delivered' | 'all';
 
@@ -215,6 +258,15 @@ export default function RiderOrdersScreen() {
                   <Text style={styles.addr}>
                     {o.address.full_name} • {o.address.line1}, {o.address.city}
                   </Text>
+                  {/* Navigate button — available once order is accepted or out for delivery */}
+                  {(canStart || isActive) && (
+                    <Pressable
+                      onPress={() => openNavigation(o.address)}
+                      style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.8 }]}
+                    >
+                      <Text style={styles.navBtnText}>🗺️ Navigate to customer</Text>
+                    </Pressable>
+                  )}
                   <View style={styles.row}>
                     <Text style={styles.amount}>
                       {(o.payment_method || 'cod').toUpperCase()} • {formatINR(o.payable ?? o.total)}
@@ -308,6 +360,17 @@ const styles = StyleSheet.create({
   },
   ctaDeliver: { backgroundColor: '#1E8E3E' },
   ctaText: { ...typography.captionBold, color: colors.white },
+  navBtn: {
+    marginTop: spacing.xs,
+    backgroundColor: '#E8F4FD',
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+    borderRadius: radii.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+  },
+  navBtnText: { ...typography.captionBold, color: '#1565C0' },
 
   // OTP Modal
   modalOverlay: {
