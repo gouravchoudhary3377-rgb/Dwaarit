@@ -424,6 +424,23 @@ async def rider_update_order_status(
     status = (body or {}).get("status")
     if status not in ("out_for_delivery", "delivered"):
         raise HTTPException(400, "Invalid status")
+
+    # Validate delivery OTP when marking as delivered
+    if status == "delivered":
+        order = await db.orders.find_one(
+            {"order_id": order_id, "driver_id": drv["driver_id"]},
+            {"_id": 0, "delivery_otp": 1},
+        )
+        if not order:
+            raise HTTPException(404, "Order not found or not assigned to you")
+        stored_otp = order.get("delivery_otp")
+        if stored_otp:
+            rider_otp = str((body or {}).get("otp", "")).strip()
+            if not rider_otp:
+                raise HTTPException(400, "Delivery OTP is required")
+            if rider_otp != stored_otp:
+                raise HTTPException(400, "Invalid OTP. Ask the customer for their delivery code.")
+
     res = await db.orders.update_one(
         {"order_id": order_id, "driver_id": drv["driver_id"]},
         {"$set": {"status": status, "updated_at": _now()}},

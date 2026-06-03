@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -38,6 +43,10 @@ export default function RiderOrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<Filter>('active');
+  // OTP delivery modal
+  const [otpModal, setOtpModal] = useState<{ orderId: string } | null>(null);
+  const [otpValue, setOtpValue] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -62,12 +71,13 @@ export default function RiderOrdersScreen() {
     return true;
   });
 
-  const onUpdate = useCallback(
-    async (orderId: string, status: 'out_for_delivery' | 'delivered') => {
+  // Start delivery (no OTP needed)
+  const onStartDelivery = useCallback(
+    async (orderId: string) => {
       try {
         const token = (await storage.secureGet('dwaarit.auth.token', '' as string)) || null;
-        await api.post(`/rider/orders/${orderId}/status`, { status }, token);
-        toast.success(status === 'delivered' ? 'Marked delivered' : 'Out for delivery');
+        await api.post(`/rider/orders/${orderId}/status`, { status: 'out_for_delivery' }, token);
+        toast.success('Started delivery');
         load();
       } catch (err: any) {
         toast.error(err?.message || 'Update failed');
@@ -76,8 +86,73 @@ export default function RiderOrdersScreen() {
     [toast, load],
   );
 
+  // Confirm delivery with OTP
+  const onConfirmDelivery = useCallback(async () => {
+    if (!otpModal || submitting) return;
+    if (otpValue.length !== 4) {
+      Alert.alert('Enter OTP', 'Please enter the 4-digit code from the customer.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const token = (await storage.secureGet('dwaarit.auth.token', '' as string)) || null;
+      await api.post(
+        `/rider/orders/${otpModal.orderId}/status`,
+        { status: 'delivered', otp: otpValue },
+        token,
+      );
+      toast.success('Order marked delivered! 🎉');
+      setOtpModal(null);
+      setOtpValue('');
+      load();
+    } catch (err: any) {
+      const msg = err?.data?.detail || err?.message || 'Delivery failed';
+      Alert.alert('OTP Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [otpModal, otpValue, submitting, toast, load]);
+
   return (
     <View style={[styles.flex, { backgroundColor: colors.surface }]}>
+      {/* OTP Delivery Modal */}
+      <Modal visible={!!otpModal} transparent animationType="fade" onRequestClose={() => setOtpModal(null)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>🔐 Enter Delivery OTP</Text>
+            <Text style={styles.modalSub}>
+              Ask the customer for their 4-digit code to confirm delivery
+            </Text>
+            <TextInput
+              style={styles.otpInput}
+              value={otpValue}
+              onChangeText={(t) => setOtpValue(t.replace(/[^0-9]/g, '').slice(0, 4))}
+              placeholder="• • • •"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="number-pad"
+              maxLength={4}
+              autoFocus
+              textAlign="center"
+            />
+            <View style={styles.modalBtns}>
+              <Pressable onPress={() => { setOtpModal(null); setOtpValue(''); }} style={styles.btnCancel}>
+                <Text style={styles.btnCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={onConfirmDelivery}
+                disabled={otpValue.length !== 4 || submitting}
+                style={[styles.btnConfirm, (otpValue.length !== 4 || submitting) && { opacity: 0.5 }]}
+              >
+                {submitting
+                  ? <ActivityIndicator color={colors.white} size="small" />
+                  : <Text style={styles.btnConfirmText}>Confirm</Text>
+                }
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable onPress={() => router.back()} style={styles.back}>
           <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -110,10 +185,7 @@ export default function RiderOrdersScreen() {
             <RefreshControl
               refreshing={refreshing}
               tintColor={colors.primary}
-              onRefresh={() => {
-                setRefreshing(true);
-                load();
-              }}
+              onRefresh={() => { setRefreshing(true); load(); }}
             />
           }
         >
@@ -123,22 +195,22 @@ export default function RiderOrdersScreen() {
             </View>
           ) : (
             filtered.map((o) => {
-              const next: 'out_for_delivery' | 'delivered' | null =
-                o.status === 'accepted' || o.status === 'pending'
-                  ? 'out_for_delivery'
-                  : o.status === 'out_for_delivery'
-                    ? 'delivered'
-                    : null;
+              const isActive = o.status === 'out_for_delivery';
+              const canStart = o.status === 'accepted' || o.status === 'pending';
               const itemCount = o.items.reduce((a, b) => a + b.quantity, 0);
               return (
                 <View key={o.order_id} style={styles.card}>
                   <View style={styles.row}>
                     <Text style={styles.id}>#{o.order_id.slice(-6).toUpperCase()}</Text>
-                    <Text style={styles.statusText}>{o.status.replace(/_/g, ' ')}</Text>
+                    <View style={[styles.statusPill, isActive && styles.statusPillActive]}>
+                      <Text style={[styles.statusText, isActive && styles.statusTextActive]}>
+                        {o.status.replace(/_/g, ' ')}
+                      </Text>
+                    </View>
                   </View>
                   <Text style={styles.items}>
                     {itemCount} items • {o.items.map((i) => i.name).slice(0, 3).join(', ')}
-                    {o.items.length > 3 ? '...' : ''}
+                    {o.items.length > 3 ? '…' : ''}
                   </Text>
                   <Text style={styles.addr}>
                     {o.address.full_name} • {o.address.line1}, {o.address.city}
@@ -147,16 +219,22 @@ export default function RiderOrdersScreen() {
                     <Text style={styles.amount}>
                       {(o.payment_method || 'cod').toUpperCase()} • {formatINR(o.payable ?? o.total)}
                     </Text>
-                    {next ? (
+                    {canStart && (
                       <Pressable
-                        onPress={() => onUpdate(o.order_id, next)}
+                        onPress={() => onStartDelivery(o.order_id)}
                         style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
                       >
-                        <Text style={styles.ctaText}>
-                          {next === 'out_for_delivery' ? 'Start' : 'Delivered'}
-                        </Text>
+                        <Text style={styles.ctaText}>Start</Text>
                       </Pressable>
-                    ) : null}
+                    )}
+                    {isActive && (
+                      <Pressable
+                        onPress={() => { setOtpValue(''); setOtpModal({ orderId: o.order_id }); }}
+                        style={({ pressed }) => [styles.cta, styles.ctaDeliver, pressed && { opacity: 0.85 }]}
+                      >
+                        <Text style={styles.ctaText}>🔐 Delivered</Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
               );
@@ -207,11 +285,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
-    ...(shadow as any).soft,
+    ...shadow.soft,
   },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
   id: { ...typography.bodyBold, color: colors.textPrimary },
-  statusText: { ...typography.caption, color: colors.textSecondary, textTransform: 'capitalize' },
+  statusPill: {
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceAlt,
+  },
+  statusPillActive: { backgroundColor: '#FFF8E1' },
+  statusText: { ...typography.tiny, color: colors.textSecondary, textTransform: 'capitalize', fontWeight: '600' },
+  statusTextActive: { color: '#E65100' },
   items: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
   addr: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
   amount: { ...typography.bodyBold, color: colors.textPrimary },
@@ -221,5 +306,49 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs + 2,
     borderRadius: radii.pill,
   },
+  ctaDeliver: { backgroundColor: '#1E8E3E' },
   ctaText: { ...typography.captionBold, color: colors.white },
+
+  // OTP Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: colors.white,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
+    width: '100%',
+    gap: spacing.md,
+    alignItems: 'center',
+  },
+  modalTitle: { ...typography.h2, color: colors.textPrimary },
+  modalSub: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  otpInput: {
+    width: '100%',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: radii.lg,
+    paddingVertical: 16,
+    fontSize: 32,
+    fontWeight: '900',
+    color: colors.textPrimary,
+    letterSpacing: 16,
+  },
+  modalBtns: { flexDirection: 'row', gap: spacing.sm, width: '100%' },
+  btnCancel: {
+    flex: 1, height: 48, borderRadius: radii.pill,
+    borderWidth: 1.5, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  btnCancelText: { ...typography.bodyBold, color: colors.textSecondary },
+  btnConfirm: {
+    flex: 2, height: 48, borderRadius: radii.pill,
+    backgroundColor: '#1E8E3E',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  btnConfirmText: { ...typography.bodyBold, color: colors.white },
 });
