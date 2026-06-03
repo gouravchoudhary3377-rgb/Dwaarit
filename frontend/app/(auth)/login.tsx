@@ -9,13 +9,15 @@ import {
   View,
 } from 'react-native';
 import { router, Link } from 'expo-router';
+import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { TextField } from '@/src/components/ui/TextField';
-import { DwaaritMark } from '@/src/components/icons/TabIcons';
 import { colors, radii, spacing, typography } from '@/src/theme';
+
+const LOGO_URI = 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png';
 
 function GoogleG() {
   return (
@@ -83,8 +85,7 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.brandRow}>
-          <DwaaritMark color={colors.primary} size={64} />
-          <Text style={styles.brand}>Dwaarit</Text>
+          <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
         </View>
         <Text style={styles.h1}>Welcome back</Text>
         <Text style={styles.sub}>Sign in to continue your grocery run.</Text>
@@ -141,7 +142,8 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingTop: spacing.xxl, gap: spacing.md },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandRow: { alignItems: 'center', marginBottom: spacing.sm },
+  logoImg: { width: 220, height: 130 },
   brand: { ...typography.h2, color: colors.textPrimary },
   h1: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.lg },
   sub: { ...typography.body, color: colors.textSecondary },

@@ -266,6 +266,12 @@ export default function Home() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* --- Sticky top: location + cart --- */}
       <View style={styles.topBar}>
+        {/* Dwaarit Logo */}
+        <Image
+          source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png' }}
+          style={styles.topBarLogo}
+          contentFit="contain"
+        />
         <Pressable
           style={styles.locWrap}
           hitSlop={8}
@@ -383,6 +389,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
   },
+  topBarLogo: { width: 90, height: 44 },
   locWrap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   boltChip: {
     flexDirection: 'row',

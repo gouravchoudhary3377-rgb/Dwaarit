@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 
 import { useAuth } from '@/src/context/AuthContext';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { TextField } from '@/src/components/ui/TextField';
-import { DwaaritMark } from '@/src/components/icons/TabIcons';
 import { colors, spacing, typography } from '@/src/theme';
+
+const LOGO_URI = 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png';
 
 export default function Signup() {
   const { signUp } = useAuth();
@@ -38,8 +40,7 @@ export default function Signup() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.brandRow}>
-          <DwaaritMark color={colors.primary} size={56} />
-          <Text style={styles.brand}>Dwaarit</Text>
+          <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
         </View>
         <Text style={styles.h1}>Create your account</Text>
         <Text style={styles.sub}>Get fresh groceries delivered in minutes.</Text>
@@ -80,7 +81,8 @@ export default function Signup() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingTop: spacing.xxl, gap: spacing.md },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandRow: { alignItems: 'center', marginBottom: spacing.sm },
+  logoImg: { width: 180, height: 90 },
   brand: { ...typography.h2, color: colors.textPrimary },
   h1: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.lg },
   sub: { ...typography.body, color: colors.textSecondary },

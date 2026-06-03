@@ -407,7 +407,11 @@ export default function Profile() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerBrand}>Dwaarit</Text>
+          <Image
+            source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png' }}
+            style={styles.footerLogo}
+            contentFit="contain"
+          />
           <Text style={styles.footerVersion}>v{APP_VERSION} • Made with care</Text>
         </View>
       </ScrollView>
@@ -514,6 +518,7 @@ const styles = StyleSheet.create({
 
   /* Footer */
   footer: { alignItems: 'center', marginTop: spacing.xl, gap: 4 },
+  footerLogo: { width: 140, height: 70 },
   footerBrand: {
     ...typography.h3,
     color: colors.primary,
