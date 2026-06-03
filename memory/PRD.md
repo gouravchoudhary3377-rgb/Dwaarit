@@ -57,7 +57,9 @@ Dwaarit is a cross-platform (Expo/React Native) grocery delivery app with:
 ## Mocked Integrations
 - Razorpay (mock test mode — no real money)
 
-## Pending / Upcoming
+### Phase 9 (2026-06)
+- **In-app Chat (Customer ↔ Rider/Admin)**: `GET/POST /api/orders/{id}/chat` with full auth guard (owner + admin + assigned driver). Polling every 5s, bubble UI with timestamps at `/order/[id]/chat`.
+- **Delivery OTP**: Auto-generated 4-digit OTP when order moves to `out_for_delivery`. Customer sees it prominently. Admin must enter OTP in a modal to mark as delivered. Backend validates before status change.
 - Phase 9: Scheduled Deliveries (P1)
 - Phase 9: In-app chat customer ↔ rider (P1)
 - Phase 9: Multi-language support (P2)
