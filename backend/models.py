@@ -54,6 +54,11 @@ class MobileVerifyOTPIn(BaseModel):
     otp: str = Field(min_length=4, max_length=8)
 
 
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=1)
+    new_password: str = Field(min_length=6)
+
+
 # ---------- Catalog ----------
 class Product(BaseModel):
     product_id: str = Field(default_factory=lambda: f"prod_{uuid.uuid4().hex[:12]}")

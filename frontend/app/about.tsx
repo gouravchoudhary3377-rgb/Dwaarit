@@ -257,9 +257,6 @@ function ContactSection() {
         <Text style={styles.bold}>privacy@flynkit.com</Text>
         <Text style={styles.muted}>For data, privacy and account deletion requests.</Text>
       </Card>
-      <Card title="Registered address">
-        <P>Flynkit Retail Pvt. Ltd.\n4th Floor, Embassy Tech Square,\nBengaluru, Karnataka 560103, India.</P>
-      </Card>
     </>
   );
 }

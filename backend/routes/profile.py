@@ -9,13 +9,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from config import OTP_DEV_MODE, OTP_TTL_SECONDS
 from database import db
 from models import (
+    ChangePasswordIn,
     MobileSendOTPIn,
     MobileVerifyOTPIn,
     ProfileUpdateIn,
     UserPublic,
 )
 from routes.auth import public_user
-from security import get_current_user
+from security import get_current_user, hash_password, verify_password
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -80,3 +81,18 @@ async def verify_mobile_otp(body: MobileVerifyOTPIn, user: dict = Depends(get_cu
 
 
 _ = uuid  # silence unused if needed
+
+
+@router.post("/change-password")
+async def change_password(body: ChangePasswordIn, user: dict = Depends(get_current_user)):
+    """Allow any authenticated user to change their password."""
+    doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0, "password_hash": 1, "auth_provider": 1})
+    if not doc:
+        raise HTTPException(404, "User not found")
+    if doc.get("auth_provider") == "google":
+        raise HTTPException(400, "Google sign-in accounts cannot change password here")
+    if not verify_password(body.current_password, doc.get("password_hash", "")):
+        raise HTTPException(400, "Current password is incorrect")
+    new_hash = hash_password(body.new_password)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"password_hash": new_hash}})
+    return {"ok": True, "message": "Password updated successfully"}
