@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import Svg, { Path } from 'react-native-svg';
 
 import { api } from '@/src/api/client';
@@ -79,6 +80,30 @@ function openNavigation(address: RiderOrder['address']) {
 
 type Filter = 'active' | 'delivered' | 'all';
 
+type RiderPos = { lat: number; lng: number };
+
+/** Haversine great-circle distance in km */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** ETA at ~20 km/h urban delivery speed */
+function etaText(km: number): string {
+  const mins = Math.max(1, Math.round((km / 20) * 60));
+  if (mins < 60) return `~${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `~${h}h${m > 0 ? ` ${m}m` : ''}`;
+}
+
 export default function RiderOrdersScreen() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
@@ -90,6 +115,30 @@ export default function RiderOrdersScreen() {
   const [otpModal, setOtpModal] = useState<{ orderId: string } | null>(null);
   const [otpValue, setOtpValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Rider GPS location for distance/ETA
+  const [riderPos, setRiderPos] = useState<RiderPos | null>(null);
+  const locationSub = useRef<Location.LocationSubscription | null>(null);
+
+  // Request location permission and start watching position
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || cancelled) return;
+      // Get immediate position
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (!cancelled) setRiderPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      // Watch position updates every 30s
+      locationSub.current = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 30_000, distanceInterval: 100 },
+        (p) => { if (!cancelled) setRiderPos({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+      );
+    })();
+    return () => {
+      cancelled = true;
+      locationSub.current?.remove();
+    };
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -258,6 +307,16 @@ export default function RiderOrdersScreen() {
                   <Text style={styles.addr}>
                     {o.address.full_name} • {o.address.line1}, {o.address.city}
                   </Text>
+                  {/* Distance + ETA chip */}
+                  {riderPos && o.address.lat && o.address.lng && (canStart || isActive) ? (() => {
+                    const km = haversineKm(riderPos.lat, riderPos.lng, o.address.lat!, o.address.lng!);
+                    const distStr = km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`;
+                    return (
+                      <View style={styles.etaChip}>
+                        <Text style={styles.etaChipText}>📍 {distStr} · {etaText(km)}</Text>
+                      </View>
+                    );
+                  })() : null}
                   {/* Navigate button — available once order is accepted or out for delivery */}
                   {(canStart || isActive) && (
                     <Pressable
@@ -371,6 +430,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navBtnText: { ...typography.captionBold, color: '#1565C0' },
+  etaChip: {
+    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF3E0',
+    borderRadius: radii.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: '#FFB74D',
+  },
+  etaChipText: { ...typography.tiny, color: '#E65100', fontWeight: '700' as const },
 
   // OTP Modal
   modalOverlay: {
