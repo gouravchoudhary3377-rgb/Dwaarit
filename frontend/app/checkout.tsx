@@ -115,6 +115,45 @@ type ValidatedCoupon = {
   final: number;
 };
 
+type ValidateCouponResponse = {
+  valid: boolean;
+  code: string;
+  title: string;
+  description: string;
+  discount: number;
+  discount_type: 'flat' | 'percent';
+  value: number;
+  max_discount?: number | null;
+  new_subtotal: number;
+};
+
+type PublicCoupon = {
+  code: string;
+  title: string;
+  description: string;
+  discount_type: 'flat' | 'percent';
+  value: number;
+  min_order_value: number;
+  max_discount?: number | null;
+  expires_at?: string | null;
+};
+
+function mapValidated(
+  resp: ValidateCouponResponse,
+  subtotalUsed: number,
+): ValidatedCoupon {
+  return {
+    code: resp.code,
+    title: resp.title || resp.code,
+    description: resp.description || '',
+    discount_type: resp.discount_type,
+    value: resp.value,
+    discount: resp.discount,
+    subtotal: subtotalUsed,
+    final: resp.new_subtotal,
+  };
+}
+
 export default function Checkout() {
   const insets = useSafeAreaInsets();
   const { token, user } = useAuth();
@@ -179,16 +218,20 @@ export default function Checkout() {
   useEffect(() => {
     if (!coupon || !token) return;
     if (Math.abs(coupon.subtotal - itemsTotal) < 0.01) return;
+    if (itemsTotal <= 0) {
+      setCoupon(null);
+      return;
+    }
     // Cart changed - try to re-validate the coupon silently
     let cancelled = false;
     (async () => {
       try {
-        const v = await api.post<ValidatedCoupon>(
+        const v = await api.post<ValidateCouponResponse>(
           '/coupons/validate',
           { code: coupon.code, subtotal: itemsTotal },
           token,
         );
-        if (!cancelled) setCoupon(v);
+        if (!cancelled) setCoupon(mapValidated(v, itemsTotal));
       } catch {
         if (!cancelled) {
           setCoupon(null);
@@ -200,6 +243,72 @@ export default function Checkout() {
       cancelled = true;
     };
   }, [itemsTotal, coupon, token]);
+
+  // Load active offers on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await api.get<PublicCoupon[]>('/coupons');
+        if (!cancelled) {
+          // Convert to ValidatedCoupon-like for previewing (no discount precomputed)
+          const previews: ValidatedCoupon[] = list.map((c) => ({
+            code: c.code,
+            title: c.title || c.code,
+            description: c.description || '',
+            discount_type: c.discount_type,
+            value: c.value,
+            discount: 0,
+            subtotal: 0,
+            final: 0,
+          }));
+          setOffers(previews);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function applyCoupon(rawCode?: string) {
+    const code = (rawCode ?? couponInput).trim().toUpperCase();
+    if (!code) {
+      setCouponErr('Enter a coupon code');
+      return;
+    }
+    if (!token) return;
+    if (itemsTotal <= 0) {
+      setCouponErr('Add items to your cart first');
+      return;
+    }
+    setCouponBusy(true);
+    setCouponErr(null);
+    try {
+      const v = await api.post<ValidateCouponResponse>(
+        '/coupons/validate',
+        { code, subtotal: itemsTotal },
+        token,
+      );
+      const applied = mapValidated(v, itemsTotal);
+      setCoupon(applied);
+      setCouponInput(applied.code);
+      setShowOffers(false);
+    } catch (e: any) {
+      setCoupon(null);
+      setCouponErr(e?.message ?? 'Invalid coupon code');
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCoupon(null);
+    setCouponInput('');
+    setCouponErr(null);
+  }
 
   const discount = coupon ? coupon.discount : 0;
   const totalBeforeWallet = +Math.max(itemsTotal + deliveryFee - discount, 0).toFixed(2);
@@ -256,6 +365,7 @@ export default function Checkout() {
         payment_method: payMethod,
         notes,
         use_wallet: payMethod === 'wallet' || useWallet,
+        coupon_code: coupon ? coupon.code : null,
       },
       token,
     );
@@ -438,6 +548,101 @@ export default function Checkout() {
           placeholder="Leave at the door"
         />
 
+        <Text style={styles.section}>Apply coupon</Text>
+        {coupon ? (
+          <View style={styles.appliedCoupon}>
+            <View style={styles.appliedIcon}>
+              <CheckIcon color={colors.success} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.appliedCode}>{coupon.code}</Text>
+              <Text style={styles.appliedSub} numberOfLines={2}>
+                {coupon.title || coupon.description || 'Coupon applied'}
+              </Text>
+              <Text style={styles.appliedSavings}>
+                You save {formatINR(coupon.discount)}
+              </Text>
+            </View>
+            <Pressable
+              onPress={removeCoupon}
+              hitSlop={10}
+              testID="remove-coupon-btn"
+              style={styles.removeCouponBtn}
+            >
+              <Text style={styles.removeCouponText}>Remove</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.couponRow}>
+            <View style={{ flex: 1 }}>
+              <TextField
+                label="Promo code"
+                value={couponInput}
+                onChangeText={(t) => {
+                  setCouponInput(t.toUpperCase());
+                  if (couponErr) setCouponErr(null);
+                }}
+                placeholder="e.g. WELCOME50"
+                autoCapitalize="characters"
+                testID="coupon-input"
+              />
+            </View>
+            <Pressable
+              testID="apply-coupon-btn"
+              onPress={() => applyCoupon()}
+              disabled={couponBusy || !couponInput.trim()}
+              style={[
+                styles.applyBtn,
+                (couponBusy || !couponInput.trim()) && { opacity: 0.5 },
+              ]}
+            >
+              <Text style={styles.applyBtnText}>
+                {couponBusy ? '...' : 'Apply'}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+        {couponErr ? <Text style={styles.err}>{couponErr}</Text> : null}
+
+        {offers && offers.length > 0 ? (
+          <>
+            <Pressable
+              onPress={() => setShowOffers((s) => !s)}
+              testID="toggle-offers-btn"
+            >
+              <Text style={styles.viewOffers}>
+                {showOffers ? 'Hide offers' : `View all offers (${offers.length})`}
+              </Text>
+            </Pressable>
+            {showOffers ? (
+              <View style={{ gap: spacing.sm }}>
+                {offers.map((o) => (
+                  <View key={o.code} style={styles.offerCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.offerCode}>{o.code}</Text>
+                      <Text style={styles.offerTitle} numberOfLines={2}>
+                        {o.title || o.description || (
+                          o.discount_type === 'percent'
+                            ? `${o.value}% off`
+                            : `Flat ${formatINR(o.value)} off`
+                        )}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => applyCoupon(o.code)}
+                      disabled={couponBusy}
+                      style={[styles.applyBtn, couponBusy && { opacity: 0.5 }]}
+                      testID={`apply-offer-${o.code}`}
+                    >
+                      <Text style={styles.applyBtnText}>Apply</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
         <Text style={styles.section}>Payment method</Text>
 
         <PayOption
@@ -498,6 +703,13 @@ export default function Checkout() {
             value={deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee)}
             valueColor={deliveryFee === 0 ? colors.success : undefined}
           />
+          {discount > 0 ? (
+            <Row
+              label={`Coupon (${coupon?.code ?? ''})`}
+              value={`- ${formatINR(discount)}`}
+              valueColor={colors.success}
+            />
+          ) : null}
           {walletApplied > 0 ? (
             <Row label="Wallet applied" value={`- ${formatINR(walletApplied)}`} valueColor={colors.success} />
           ) : null}
@@ -756,6 +968,63 @@ const styles = StyleSheet.create({
   codNote: { ...typography.tiny, color: colors.textMuted, marginTop: 4 },
 
   err: { color: colors.error, ...typography.caption },
+
+  /* Coupon */
+  couponRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  applyBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  applyBtnText: { ...typography.bodyBold, color: colors.white },
+  appliedCoupon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#EAF7EE',
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.success,
+  },
+  appliedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appliedCode: { ...typography.bodyBold, color: colors.textPrimary },
+  appliedSub: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
+  appliedSavings: { ...typography.caption, color: colors.success, fontWeight: '700', marginTop: 4 },
+  removeCouponBtn: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+  },
+  removeCouponText: { ...typography.caption, color: colors.error, fontWeight: '700' },
+  viewOffers: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  offerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  offerCode: { ...typography.bodyBold, color: colors.primary },
+  offerTitle: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
 
   /* Footer */
   footer: {
