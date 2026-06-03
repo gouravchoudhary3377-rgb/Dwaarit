@@ -332,11 +332,14 @@ async def admin_delete_driver(driver_id: str, admin: dict = Depends(require_supe
 async def admin_assign_order(
     order_id: str, body: OrderAssignIn, admin: dict = Depends(require_staff)
 ):
+    import random
     drv = await db.drivers.find_one({"driver_id": body.driver_id})
     if not drv:
         raise HTTPException(404, "Driver not found")
     if drv.get("status") != "approved":
         raise HTTPException(400, "Driver not approved")
+    # Generate delivery OTP when assigning (moves to out_for_delivery)
+    otp = str(random.randint(1000, 9999))
     res = await db.orders.update_one(
         {"order_id": order_id},
         {"$set": {
@@ -346,12 +349,15 @@ async def admin_assign_order(
             "driver_vehicle": drv.get("vehicle_number") or drv.get("vehicle_type"),
             "assigned_at": _now(),
             "status": "out_for_delivery",
+            "delivery_otp": otp,
+            "updated_at": _now(),
         }},
     )
     if res.matched_count == 0:
         raise HTTPException(404, "Order not found")
     await _audit(admin, "order.assign", order_id, {"driver_id": body.driver_id})
-    return {"ok": True}
+    doc = await db.orders.find_one({"order_id": order_id}, {"_id": 0})
+    return doc
 
 
 # ============================================================

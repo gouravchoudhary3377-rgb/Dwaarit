@@ -28,6 +28,15 @@ import { useMuteToggle } from '@/src/hooks/useMuteToggle';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
+type RiderOption = {
+  driver_id: string;
+  name: string;
+  phone: string;
+  vehicle_type: string;
+  vehicle_number?: string;
+  is_online?: boolean;
+};
+
 // ---- Order status flow ----
 const NEXT: Record<Status, Status | null> = {
   pending: 'accepted',
@@ -138,11 +147,13 @@ function OrderCard({
   busy,
   onAdvance,
   onCancel,
+  onAssign,
 }: {
   order: Order;
   busy: boolean;
   onAdvance: (o: Order) => void;
   onCancel: (o: Order) => void;
+  onAssign: (o: Order) => void;
 }) {
   const isPending = order.status === 'pending';
   const pulseColor = usePulse(isPending);
@@ -259,6 +270,17 @@ function OrderCard({
         })}
       </View>
 
+      {/* Assign Rider button — shown on accepted orders */}
+      {order.status === 'accepted' && (
+        <Pressable
+          onPress={() => onAssign(order)}
+          disabled={busy}
+          style={({ pressed }) => [styles.assignRiderBtn, pressed && { opacity: 0.8 }]}
+        >
+          <Text style={styles.assignRiderBtnText}>🛵 Assign Rider</Text>
+        </Pressable>
+      )}
+
       {/* Actions */}
       <View style={styles.actionsRow}>
         {order.status !== 'delivered' && order.status !== 'cancelled' ? (
@@ -322,6 +344,10 @@ export default function AdminOrders() {
   // OTP modal state
   const [otpModal, setOtpModal] = useState<{ order: Order } | null>(null);
   const [otpInput, setOtpInput] = useState('');
+  // Assign Rider modal state
+  const [assignModal, setAssignModal] = useState<{ order: Order } | null>(null);
+  const [riderList, setRiderList] = useState<RiderOption[]>([]);
+  const [loadingRiders, setLoadingRiders] = useState(false);
 
   // Re-render every 30s so "X min ago" stays fresh
   useEffect(() => {
@@ -398,9 +424,97 @@ export default function AdminOrders() {
 
   const fetchLabel = lastFetchAt ? `Updated ${timeAgo(lastFetchAt.toISOString())}` : 'Syncing…';
 
+  // Open Assign Rider modal and fetch approved drivers
+  const onOpenAssign = useCallback(
+    async (order: Order) => {
+      setAssignModal({ order });
+      setLoadingRiders(true);
+      try {
+        const riders = await api.get<RiderOption[]>('/admin/drivers?status=approved', token);
+        setRiderList(riders || []);
+      } catch {
+        setRiderList([]);
+      } finally {
+        setLoadingRiders(false);
+      }
+    },
+    [token],
+  );
+
+  const onAssignRider = useCallback(
+    async (driverId: string) => {
+      if (!assignModal || updatingId) return;
+      const { order } = assignModal;
+      setUpdatingId(order.order_id);
+      setAssignModal(null);
+      try {
+        const updated = await api.post<Order>(
+          `/admin/orders/${order.order_id}/assign`,
+          { driver_id: driverId },
+          token,
+        );
+        setLocalOrder(updated);
+      } catch (e: any) {
+        Alert.alert('Assign failed', e?.data?.detail || e?.message || 'Could not assign rider');
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [assignModal, token, updatingId, setLocalOrder],
+  );
+
   return (
     <View style={[styles.root, { paddingTop: insets.top + spacing.sm }]}>
-      {/* OTP Delivery Modal */}
+      {/* Assign Rider Modal */}
+      <Modal visible={!!assignModal} transparent animationType="slide" onRequestClose={() => setAssignModal(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.assignSheet}>
+            <View style={styles.assignSheetHandle} />
+            <Text style={styles.modalTitle}>🛵 Assign a Rider</Text>
+            <Text style={styles.modalSub}>
+              Order #{assignModal?.order.order_id.slice(-6).toUpperCase()} · Select an approved rider
+            </Text>
+            {loadingRiders ? (
+              <View style={{ alignItems: 'center', padding: spacing.xl }}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : riderList.length === 0 ? (
+              <View style={{ alignItems: 'center', padding: spacing.xl }}>
+                <Text style={{ fontSize: 40, marginBottom: spacing.sm }}>🛵</Text>
+                <Text style={{ ...typography.bodyBold, color: colors.textPrimary }}>No approved riders</Text>
+                <Text style={{ ...typography.caption, color: colors.textSecondary, marginTop: 4, textAlign: 'center' }}>
+                  Go to Delivery Partners to approve a rider first.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                {riderList.map((rider) => (
+                  <Pressable
+                    key={rider.driver_id}
+                    onPress={() => onAssignRider(rider.driver_id)}
+                    style={({ pressed }) => [styles.riderRow, pressed && { backgroundColor: colors.primarySoft }]}
+                  >
+                    <View style={styles.riderAvatar}>
+                      <Text style={styles.riderAvatarText}>{rider.name.charAt(0).toUpperCase()}</Text>
+                      {rider.is_online && <View style={styles.riderOnlineDot} />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.riderName}>{rider.name}</Text>
+                      <Text style={styles.riderMeta}>
+                        {rider.phone} · {rider.vehicle_type}{rider.vehicle_number ? ` · ${rider.vehicle_number}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 20 }}>→</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+            <Pressable onPress={() => setAssignModal(null)} style={styles.modalBtnCancel}>
+              <Text style={styles.modalBtnCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={!!otpModal} transparent animationType="fade" onRequestClose={() => setOtpModal(null)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalCard}>
@@ -505,6 +619,7 @@ export default function AdminOrders() {
               busy={updatingId === item.order_id}
               onAdvance={onAdvance}
               onCancel={onCancel}
+              onAssign={onOpenAssign}
             />
           )}
         />
@@ -735,4 +850,46 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   modalBtnConfirmText: { ...typography.bodyBold, color: colors.white },
+
+  // Assign Rider
+  assignSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    maxHeight: '70%',
+    gap: spacing.md,
+  },
+  assignSheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: spacing.sm },
+  riderRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.sm,
+  },
+  riderAvatar: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  riderAvatarText: { ...typography.bodyBold, color: colors.primary },
+  riderOnlineDot: {
+    position: 'absolute', right: -1, bottom: -1,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: colors.success, borderWidth: 2, borderColor: colors.white,
+  },
+  riderName: { ...typography.bodyBold, color: colors.textPrimary },
+  riderMeta: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
+  assignRiderBtn: {
+    backgroundColor: '#E8EAF6',
+    borderRadius: radii.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C5CAE9',
+  },
+  assignRiderBtnText: { ...typography.captionBold, color: '#3949AB' },
 });
