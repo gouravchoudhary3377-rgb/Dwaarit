@@ -35,6 +35,12 @@ export default function AdminAccount() {
           onPress={() => router.push('/admin/coupons')}
           testID="admin-link-coupons"
         />
+        <LinkRow
+          label="Banners"
+          hint="Manage home screen carousel · images & videos"
+          onPress={() => router.push('/admin/banners')}
+          testID="admin-link-banners"
+        />
       </View>
 
       <PrimaryButton title="Sign out" variant="secondary" onPress={onSignOut} testID="admin-signout" />

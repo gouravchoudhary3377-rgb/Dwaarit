@@ -17,6 +17,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { api, Product } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { ProductCard } from '@/src/components/ProductCard';
+import { BannerCarousel } from '@/src/components/BannerCarousel';
 import { CartIcon } from '@/src/components/icons/TabIcons';
 import { ProductRowSkeleton, CategoryPillSkeleton } from '@/src/components/ui/Skeleton';
 import { useCart } from '@/src/store/cartStore';
@@ -322,6 +323,9 @@ export default function Home() {
           </Pressable>
         ) : null}
       </View>
+
+      {/* --- Admin-managed banner carousel (auto-scrolling, hides if empty) --- */}
+      <BannerCarousel />
 
       {loading ? (
         <View style={{ paddingTop: spacing.md }}>
