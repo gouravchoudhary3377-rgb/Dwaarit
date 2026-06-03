@@ -408,7 +408,7 @@ export default function Profile() {
         {/* Footer */}
         <View style={styles.footer}>
           <Image
-            source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ay4ir68w_dwaar.png' }}
+            source={{ uri: 'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png' }}
             style={styles.footerLogo}
             contentFit="contain"
           />
