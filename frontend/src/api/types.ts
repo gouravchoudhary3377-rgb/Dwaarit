@@ -145,6 +145,7 @@ export type Order = {
   items: OrderItem[];
   subtotal?: number;
   delivery_fee?: number;
+  handling_fee?: number;
   wallet_applied?: number;
   payable?: number;
   total: number;

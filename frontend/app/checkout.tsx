@@ -34,7 +34,8 @@ import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
 const DELIVERY_FEE = 25;
-const FREE_DELIVERY_THRESHOLD = 499;
+const FREE_DELIVERY_THRESHOLD = 250;
+const HANDLING_FEE = 12;
 
 type PayMethod = 'cod' | 'wallet' | 'razorpay';
 
@@ -96,6 +97,7 @@ type CreateOrderResponse = {
   total: number;
   subtotal: number;
   delivery_fee: number;
+  handling_fee: number;
   wallet_applied: number;
   payable: number;
   discount: number;
@@ -213,6 +215,7 @@ export default function Checkout() {
   );
 
   const deliveryFee = itemsTotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
+  const handlingFee = HANDLING_FEE;
 
   // If coupon's subtotal no longer matches the cart subtotal, auto-revalidate or clear
   useEffect(() => {
@@ -311,7 +314,7 @@ export default function Checkout() {
   }
 
   const discount = coupon ? coupon.discount : 0;
-  const totalBeforeWallet = +Math.max(itemsTotal + deliveryFee - discount, 0).toFixed(2);
+  const totalBeforeWallet = +Math.max(itemsTotal + deliveryFee + handlingFee - discount, 0).toFixed(2);
 
   // Compute wallet applied / payable preview
   const { walletApplied, payable } = useMemo(() => {
@@ -703,6 +706,7 @@ export default function Checkout() {
             value={deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee)}
             valueColor={deliveryFee === 0 ? colors.success : undefined}
           />
+          <Row label="Handling fee" value={formatINR(handlingFee)} />
           {discount > 0 ? (
             <Row
               label={`Coupon (${coupon?.code ?? ''})`}

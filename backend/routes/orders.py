@@ -13,8 +13,9 @@ from security import get_current_user, require_admin
 
 router = APIRouter(tags=["orders"])
 
-DELIVERY_FEE = 25.0  # INR flat
-FREE_DELIVERY_THRESHOLD = 499.0
+DELIVERY_FEE = 25.0  # INR flat — applied on orders below FREE_DELIVERY_THRESHOLD
+FREE_DELIVERY_THRESHOLD = 250.0
+HANDLING_FEE = 12.0  # INR — charged on every order
 
 
 async def _get_wallet_balance(user_id: str) -> float:
@@ -75,6 +76,7 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
             "subtotal": line,
         })
     delivery_fee = 0.0 if subtotal >= FREE_DELIVERY_THRESHOLD else DELIVERY_FEE
+    handling_fee = HANDLING_FEE
 
     # ---- Coupon / Promo code ----
     coupon_code: str | None = None
@@ -90,7 +92,7 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
         coupon_code = coupon["code"]
         coupon_title = coupon.get("title", "")
 
-    total_before_wallet = round(subtotal + delivery_fee - discount, 2)
+    total_before_wallet = round(subtotal + delivery_fee + handling_fee - discount, 2)
     if total_before_wallet < 0:
         total_before_wallet = 0.0
 
@@ -115,6 +117,7 @@ async def create_order(body: OrderIn, user: dict = Depends(get_current_user)):
         "items": items,
         "subtotal": round(subtotal, 2),
         "delivery_fee": delivery_fee,
+        "handling_fee": handling_fee,
         "coupon_code": coupon_code,
         "coupon_title": coupon_title,
         "discount": round(discount, 2),
@@ -184,6 +187,7 @@ async def get_invoice(order_id: str, user: dict = Depends(get_current_user)):
         "items": doc["items"],
         "subtotal": doc.get("subtotal", doc.get("total", 0)),
         "delivery_fee": doc.get("delivery_fee", 0),
+        "handling_fee": doc.get("handling_fee", 0),
         "wallet_applied": doc.get("wallet_applied", 0),
         "payable": doc.get("payable", doc.get("total", 0)),
         "total": doc.get("total", 0),

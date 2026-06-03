@@ -93,6 +93,7 @@ export default function OrderDetail() {
   const currentRank = rankOf(order.status);
   const subtotal = order.subtotal ?? order.items.reduce((s, it) => s + it.subtotal, 0);
   const deliveryFee = order.delivery_fee ?? 0;
+  const handlingFee = order.handling_fee ?? 0;
   const walletApplied = order.wallet_applied ?? 0;
   const payable = order.payable ?? order.total;
   const isLive = ['pending', 'accepted', 'out_for_delivery'].includes(order.status);
@@ -265,6 +266,10 @@ export default function OrderDetail() {
           <View style={styles.payRow}>
             <Text style={styles.payK}>Delivery fee</Text>
             <Text style={styles.payVfree}>{deliveryFee === 0 ? 'FREE' : formatINR(deliveryFee)}</Text>
+          </View>
+          <View style={styles.payRow}>
+            <Text style={styles.payK}>Handling fee</Text>
+            <Text style={styles.payV}>{formatINR(handlingFee)}</Text>
           </View>
           {walletApplied > 0 ? (
             <View style={styles.payRow}>
