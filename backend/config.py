@@ -28,5 +28,4 @@ OTP_DEV_MODE: bool = os.environ.get("OTP_DEV_MODE", "false").lower() in ("1", "t
 
 # MSG91 SMS gateway
 MSG91_AUTH_KEY: str = os.environ.get("MSG91_AUTH_KEY", "")
-MSG91_TEMPLATE_ID: str = os.environ.get("MSG91_TEMPLATE_ID", "")
-MSG91_ENABLED: bool = bool(MSG91_AUTH_KEY and MSG91_TEMPLATE_ID)
+MSG91_ENABLED: bool = bool(MSG91_AUTH_KEY)

@@ -11,7 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from audit import log_event, log_login, recent_failed_login_count
-from config import EMERGENT_SESSION_URL, MSG91_AUTH_KEY, MSG91_ENABLED, MSG91_TEMPLATE_ID, OTP_DEV_MODE
+from config import EMERGENT_SESSION_URL, MSG91_AUTH_KEY, MSG91_ENABLED, OTP_DEV_MODE
 from database import db
 from models import GoogleSessionIn, LoginIn, MobileSendOTPIn, MobileVerifyOTPIn, SignupIn, TokenOut, UserPublic
 from security import (
@@ -219,7 +219,6 @@ def _validate_indian_mobile(mobile: str) -> str:
 async def _send_otp_msg91(mobile: str, otp: str) -> dict:
     """Call MSG91 OTP API. Raises HTTPException on fatal failures."""
     payload = {
-        "template_id": MSG91_TEMPLATE_ID,
         "mobile": f"91{mobile}",
         "otp": otp,
     }
