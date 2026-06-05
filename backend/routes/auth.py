@@ -217,7 +217,10 @@ def _validate_indian_mobile(mobile: str) -> str:
 
 
 async def _send_otp_msg91(mobile: str, otp: str) -> dict:
-    """Call MSG91 OTP API. Raises HTTPException on fatal failures."""
+    """
+    Call MSG91 OTP API with full audit logging.
+    Raises HTTPException on every failure — caller must NOT swallow this.
+    """
     payload = {
         "mobile": f"91{mobile}",
         "otp": otp,
@@ -226,35 +229,50 @@ async def _send_otp_msg91(mobile: str, otp: str) -> dict:
         "Authkey": MSG91_AUTH_KEY,
         "Content-Type": "application/json",
     }
+
+    logger.info(
+        "[MSG91] → POST %s | mobile=91%s | payload=%s",
+        MSG91_OTP_URL, mobile, payload,
+    )
+
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(MSG91_OTP_URL, json=payload, headers=headers)
 
+        # Parse body regardless of status
         data: dict = {}
         try:
             data = resp.json()
         except Exception:
             data = {"raw": resp.text}
 
+        logger.info(
+            "[MSG91] ← status=%s | body=%s | mobile=91%s",
+            resp.status_code, data, mobile,
+        )
+
         if resp.status_code == 200 and data.get("type") == "success":
-            logger.info("MSG91 OTP sent to 91%s | request_id=%s", mobile, data.get("request_id", ""))
+            logger.info(
+                "[MSG91] OTP delivered | mobile=91%s | request_id=%s",
+                mobile, data.get("request_id", "N/A"),
+            )
             return data
 
-        # Non-success — log and surface a clean error
+        # MSG91 returned a non-success — log and hard-fail
         logger.error(
-            "MSG91 OTP send failed: status=%s body=%s mobile=91%s",
+            "[MSG91] OTP send FAILED | status=%s | body=%s | mobile=91%s",
             resp.status_code, data, mobile,
         )
         detail = data.get("message") or data.get("raw") or "SMS gateway error"
         raise HTTPException(502, f"Could not send OTP: {detail}")
 
     except httpx.TimeoutException:
-        logger.error("MSG91 request timed out for 91%s", mobile)
+        logger.error("[MSG91] Request TIMED OUT for 91%s", mobile)
         raise HTTPException(504, "SMS gateway timed out — please try again")
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Unexpected error calling MSG91 for 91%s", mobile)
+        logger.exception("[MSG91] Unexpected error for 91%s", mobile)
         raise HTTPException(502, "SMS gateway unavailable — please try again") from exc
 
 
@@ -266,11 +284,19 @@ OTP_TTL = 300  # 5 minutes
 async def mobile_send_otp(body: MobileSendOTPIn, request: Request):
     """
     Send a login OTP to the given mobile number via MSG91.
-    - Validates 10-digit Indian mobile (6–9 series).
-    - Generates a 6-digit OTP and persists it with a 5-minute TTL.
-    - In production (OTP_DEV_MODE=false): sends via MSG91, no dev_otp returned.
-    - In dev mode (OTP_DEV_MODE=true): skips MSG91, returns dev_otp in response.
+    Audit checks at runtime:
+      1. OTP_DEV_MODE must be False for production path.
+      2. MSG91_ENABLED must be True (auth key present).
+      3. httpx POST to MSG91 is always executed; request fails if MSG91 not contacted.
     """
+    # ── Audit: log runtime config state ──────────────────────────────
+    logger.info(
+        "[AUDIT] send-otp | OTP_DEV_MODE=%s | MSG91_ENABLED=%s | MSG91_AUTH_KEY_SET=%s",
+        OTP_DEV_MODE,
+        MSG91_ENABLED,
+        bool(MSG91_AUTH_KEY),
+    )
+
     mobile = _validate_indian_mobile(body.mobile)
 
     otp = f"{random.randint(100000, 999999)}"
@@ -288,21 +314,25 @@ async def mobile_send_otp(body: MobileSendOTPIn, request: Request):
         upsert=True,
     )
 
-    if MSG91_ENABLED and not OTP_DEV_MODE:
-        # Production path — send via MSG91
-        await _send_otp_msg91(mobile, otp)
-        logger.info("OTP dispatched via MSG91 to 91%s", mobile)
-    else:
-        # Dev/fallback path — log OTP locally
+    if OTP_DEV_MODE:
+        # Dev mode — skip MSG91, return OTP in response
         logger.warning(
-            "OTP_DEV_MODE active or MSG91 not configured — OTP for 91%s: %s",
+            "[AUDIT] OTP_DEV_MODE=True — skipping MSG91 for 91%s | dev_otp=%s",
             mobile, otp,
         )
+        return {"ok": True, "expires_in": OTP_TTL, "dev_otp": otp}
 
-    resp: dict = {"ok": True, "expires_in": OTP_TTL}
-    if OTP_DEV_MODE:
-        resp["dev_otp"] = otp  # Only in dev mode
-    return resp
+    # Production path — MSG91 must be configured and contacted
+    if not MSG91_ENABLED:
+        logger.error("[AUDIT] MSG91_ENABLED=False — cannot send OTP for 91%s", mobile)
+        raise HTTPException(503, "SMS gateway not configured. Contact support.")
+
+    # ── Audit check 3: always execute MSG91 call; failure raises immediately ──
+    logger.info("[AUDIT] Initiating MSG91 call for 91%s", mobile)
+    await _send_otp_msg91(mobile, otp)
+    logger.info("[AUDIT] MSG91 call completed successfully for 91%s", mobile)
+
+    return {"ok": True, "expires_in": OTP_TTL}
 
 
 @router.post("/mobile/verify-otp", response_model=TokenOut)
