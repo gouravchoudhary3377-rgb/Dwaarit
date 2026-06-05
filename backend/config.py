@@ -24,4 +24,9 @@ RAZORPAY_ENABLED: bool = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
 
 # OTP behaviour
 OTP_TTL_SECONDS: int = 300  # 5 minutes
-OTP_DEV_MODE: bool = True  # returns otp in response while SMS provider is not wired
+OTP_DEV_MODE: bool = os.environ.get("OTP_DEV_MODE", "false").lower() in ("1", "true", "yes")
+
+# MSG91 SMS gateway
+MSG91_AUTH_KEY: str = os.environ.get("MSG91_AUTH_KEY", "")
+MSG91_TEMPLATE_ID: str = os.environ.get("MSG91_TEMPLATE_ID", "")
+MSG91_ENABLED: bool = bool(MSG91_AUTH_KEY and MSG91_TEMPLATE_ID)

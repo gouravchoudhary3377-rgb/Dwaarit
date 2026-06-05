@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import random
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -8,7 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from audit import log_event, log_login, recent_failed_login_count
-from config import EMERGENT_SESSION_URL
+from config import EMERGENT_SESSION_URL, MSG91_AUTH_KEY, MSG91_ENABLED, MSG91_TEMPLATE_ID, OTP_DEV_MODE
 from database import db
 from models import GoogleSessionIn, LoginIn, MobileSendOTPIn, MobileVerifyOTPIn, SignupIn, TokenOut, UserPublic
 from security import (
@@ -17,6 +20,8 @@ from security import (
     issue_jwt,
     verify_password,
 )
+
+logger = logging.getLogger(__name__)
 
 # Brute-force protection thresholds
 MAX_FAILED_LOGINS_PER_EMAIL = 5
@@ -192,19 +197,82 @@ async def me(user: dict = Depends(get_current_user)):
     return public_user(user)
 
 
+# -------- MSG91 OTP sender --------
+_INDIAN_MOBILE_RE = re.compile(r"^[6-9]\d{9}$")  # 10-digit Indian mobile
+
+MSG91_OTP_URL = "https://control.msg91.com/api/v5/otp"
+
+
+def _validate_indian_mobile(mobile: str) -> str:
+    """Strip spaces/country code and validate 10-digit Indian number."""
+    m = mobile.strip().replace(" ", "").replace("-", "")
+    # Strip leading +91 or 91
+    if m.startswith("+91"):
+        m = m[3:]
+    elif m.startswith("91") and len(m) == 12:
+        m = m[2:]
+    if not _INDIAN_MOBILE_RE.match(m):
+        raise HTTPException(400, "Please enter a valid 10-digit Indian mobile number (6–9 series)")
+    return m
+
+
+async def _send_otp_msg91(mobile: str, otp: str) -> dict:
+    """Call MSG91 OTP API. Raises HTTPException on fatal failures."""
+    payload = {
+        "template_id": MSG91_TEMPLATE_ID,
+        "mobile": f"91{mobile}",
+        "otp": otp,
+    }
+    headers = {
+        "Authkey": MSG91_AUTH_KEY,
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(MSG91_OTP_URL, json=payload, headers=headers)
+
+        data: dict = {}
+        try:
+            data = resp.json()
+        except Exception:
+            data = {"raw": resp.text}
+
+        if resp.status_code == 200 and data.get("type") == "success":
+            logger.info("MSG91 OTP sent to 91%s | request_id=%s", mobile, data.get("request_id", ""))
+            return data
+
+        # Non-success — log and surface a clean error
+        logger.error(
+            "MSG91 OTP send failed: status=%s body=%s mobile=91%s",
+            resp.status_code, data, mobile,
+        )
+        detail = data.get("message") or data.get("raw") or "SMS gateway error"
+        raise HTTPException(502, f"Could not send OTP: {detail}")
+
+    except httpx.TimeoutException:
+        logger.error("MSG91 request timed out for 91%s", mobile)
+        raise HTTPException(504, "SMS gateway timed out — please try again")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Unexpected error calling MSG91 for 91%s", mobile)
+        raise HTTPException(502, "SMS gateway unavailable — please try again") from exc
+
+
 # -------- Mobile OTP Login --------
 OTP_TTL = 300  # 5 minutes
 
 
 @router.post("/mobile/send-otp")
 async def mobile_send_otp(body: MobileSendOTPIn, request: Request):
-    """Send a login OTP to the given mobile number. Auto-creates a customer account if none exists."""
-    import random
-    from config import OTP_DEV_MODE
-
-    mobile = body.mobile.strip()
-    if not mobile.isdigit() or len(mobile) < 8:
-        raise HTTPException(400, "Invalid mobile number")
+    """
+    Send a login OTP to the given mobile number via MSG91.
+    - Validates 10-digit Indian mobile (6–9 series).
+    - Generates a 6-digit OTP and persists it with a 5-minute TTL.
+    - In production (OTP_DEV_MODE=false): sends via MSG91, no dev_otp returned.
+    - In dev mode (OTP_DEV_MODE=true): skips MSG91, returns dev_otp in response.
+    """
+    mobile = _validate_indian_mobile(body.mobile)
 
     otp = f"{random.randint(100000, 999999)}"
     now = datetime.now(timezone.utc)
@@ -220,10 +288,21 @@ async def mobile_send_otp(body: MobileSendOTPIn, request: Request):
         }},
         upsert=True,
     )
-    # In production: call SMS provider here (e.g. Twilio, MSG91)
+
+    if MSG91_ENABLED and not OTP_DEV_MODE:
+        # Production path — send via MSG91
+        await _send_otp_msg91(mobile, otp)
+        logger.info("OTP dispatched via MSG91 to 91%s", mobile)
+    else:
+        # Dev/fallback path — log OTP locally
+        logger.warning(
+            "OTP_DEV_MODE active or MSG91 not configured — OTP for 91%s: %s",
+            mobile, otp,
+        )
+
     resp: dict = {"ok": True, "expires_in": OTP_TTL}
     if OTP_DEV_MODE:
-        resp["dev_otp"] = otp
+        resp["dev_otp"] = otp  # Only in dev mode
     return resp
 
 
