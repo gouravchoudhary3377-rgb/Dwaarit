@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from audit import log_event, log_login, recent_failed_login_count
 from config import EMERGENT_SESSION_URL, FIREBASE_PROJECT_ID, MSG91_AUTH_KEY, MSG91_ENABLED, OTP_DEV_MODE
+from rate_limiter import check_firebase_verify_rate_limit, check_phone_rate_limit
 from database import db
 from models import GoogleSessionIn, LoginIn, MobileSendOTPIn, MobileVerifyOTPIn, SignupIn, TokenOut, UserPublic
 from security import (
@@ -300,6 +301,9 @@ async def mobile_send_otp(body: MobileSendOTPIn, request: Request):
 
     mobile = _validate_indian_mobile(body.mobile)
 
+    # ── Rate limiting ─────────────────────────────────────────────────
+    await check_phone_rate_limit(mobile, request)
+
     otp = f"{random.randint(100000, 999999)}"
     now = datetime.now(timezone.utc)
     await db.otp_codes.update_one(
@@ -508,6 +512,9 @@ async def firebase_verify(body: FirebaseVerifyIn, request: Request):
         mobile = mobile[2:]
 
     logger.info("[Firebase] Verified | uid=%s | phone=%s | mobile=%s", firebase_uid, phone_number, mobile)
+
+    # ── Rate limiting (phone known after Firebase verification) ───────
+    await check_firebase_verify_rate_limit(mobile, request)
 
     # Find existing user by mobile or firebase_uid
     user = await db.users.find_one(

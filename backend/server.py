@@ -11,6 +11,7 @@ from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from database import client, ensure_indexes
+from rate_limiter import ensure_rate_limit_index
 from routes.addresses import router as addresses_router
 from routes.admin import router as admin_router
 from routes.auth import router as auth_router
@@ -67,6 +68,7 @@ async def health():
 @app.on_event("startup")
 async def on_startup():
     await ensure_indexes()
+    await ensure_rate_limit_index()
     await seed_users_and_products()
     await seed_categories()
     await seed_store_manager()
