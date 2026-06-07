@@ -19,6 +19,7 @@ import { profileApi } from '@/src/api/profile';
 import { paymentsApi } from '@/src/api/payments';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCart } from '@/src/store/cartStore';
+import { AuthGate } from '@/src/components/AuthGate';
 import {
   displayLabel,
   shortAddress,
@@ -157,6 +158,14 @@ function mapValidated(
 }
 
 export default function Checkout() {
+  return (
+    <AuthGate reason="Sign in to complete your purchase, choose a delivery address, and track your order.">
+      <CheckoutContent />
+    </AuthGate>
+  );
+}
+
+function CheckoutContent() {
   const insets = useSafeAreaInsets();
   const { token, user } = useAuth();
   const { lines, subtotal, clear } = useCart();

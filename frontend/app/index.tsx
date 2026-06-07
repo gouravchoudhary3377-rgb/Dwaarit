@@ -11,13 +11,13 @@ export default function Gate() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      router.replace('/(auth)/login');
-    } else if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'store_manager') {
+    // Staff/admin roles → their dedicated panels
+    if (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'store_manager') {
       router.replace('/admin/orders');
-    } else if (user.role === 'rider') {
+    } else if (user?.role === 'rider') {
       router.replace('/rider/dashboard');
     } else {
+      // Authenticated customers AND guests both go to the storefront
       router.replace('/(tabs)/home');
     }
   }, [loading, user]);

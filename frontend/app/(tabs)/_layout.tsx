@@ -26,11 +26,12 @@ export default function TabsLayout() {
   useCustomerOrderAlerts(8000);
 
   if (loading) return null;
-  if (!user) return <Redirect href="/(auth)/login" />;
-  if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'store_manager') {
+  // Redirect staff/admins/riders to their own panels — never show customer tabs to them
+  if (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'store_manager') {
     return <Redirect href="/admin/orders" />;
   }
-  if (user.role === 'rider') return <Redirect href="/rider/dashboard" />;
+  if (user?.role === 'rider') return <Redirect href="/rider/dashboard" />;
+  // Guests (user === null) are allowed — the individual screens gate themselves
 
   return (
     <Tabs

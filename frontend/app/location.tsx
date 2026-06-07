@@ -19,6 +19,7 @@ import * as Location from 'expo-location';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
+import { AuthGate } from '@/src/components/AuthGate';
 import {
   AddressLabel,
   SavedAddress,
@@ -132,6 +133,14 @@ function geocodeToDraft(g: GeocodeResult, label: AddressLabel = 'Home'): SavedAd
 type Mode = 'list' | 'edit';
 
 export default function LocationScreen() {
+  return (
+    <AuthGate reason="Sign in to save and manage your delivery addresses.">
+      <LocationContent />
+    </AuthGate>
+  );
+}
+
+function LocationContent() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ from?: string }>();
   const { user } = useAuth();

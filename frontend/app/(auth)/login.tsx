@@ -322,6 +322,14 @@ export default function Login() {
             </Pressable>
           </Link>
         </View>
+
+        <Pressable
+          onPress={() => router.replace('/(tabs)/home')}
+          style={styles.guestBtn}
+          hitSlop={8}
+        >
+          <Text style={styles.guestBtnText}>Continue as Guest →</Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -418,4 +426,6 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.lg },
   footerText: { color: colors.textSecondary, ...typography.body },
   footerLink: { color: colors.primary, ...typography.bodyBold },
+  guestBtn: { alignItems: 'center', paddingVertical: 8, marginTop: spacing.sm },
+  guestBtnText: { ...typography.body, color: colors.textMuted },
 });

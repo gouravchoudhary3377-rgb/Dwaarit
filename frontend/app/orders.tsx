@@ -8,12 +8,21 @@ import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge } from '@/src/components/StatusBadge';
 import { useCart } from '@/src/store/cartStore';
 import { OrderListSkeleton } from '@/src/components/ui/Skeleton';
+import { AuthGate } from '@/src/components/AuthGate';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
 const TRACKABLE: Order['status'][] = ['pending', 'accepted', 'out_for_delivery'];
 
 export default function OrdersScreen() {
+  return (
+    <AuthGate reason="Sign in to view your order history and track live deliveries.">
+      <OrdersContent />
+    </AuthGate>
+  );
+}
+
+function OrdersContent() {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const cartAdd = useCart((s) => s.add);

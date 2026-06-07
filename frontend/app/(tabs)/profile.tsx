@@ -8,6 +8,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '@/src/context/AuthContext';
 import { api, Order } from '@/src/api/client';
 import { profileApi } from '@/src/api/profile';
+import { AuthGate } from '@/src/components/AuthGate';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
@@ -189,6 +190,14 @@ function StatBox({ label, value }: { label: string; value: string }) {
 
 /* -------------------- SCREEN -------------------- */
 export default function Profile() {
+  return (
+    <AuthGate reason="Sign in to view your profile, manage orders, wallet, and saved addresses.">
+      <ProfileContent />
+    </AuthGate>
+  );
+}
+
+function ProfileContent() {
   const insets = useSafeAreaInsets();
   const { user, token, signOut } = useAuth();
   const [orders, setOrders] = useState<Order[] | null>(null);

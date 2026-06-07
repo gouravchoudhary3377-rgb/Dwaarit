@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { api, Invoice, Order } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { StatusBadge, Status } from '@/src/components/StatusBadge';
+import { AuthGate } from '@/src/components/AuthGate';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { formatINR } from '@/src/utils/format';
 
@@ -48,6 +49,14 @@ function rankOf(status: Status): number {
 }
 
 export default function OrderDetail() {
+  return (
+    <AuthGate reason="Sign in to view your order details, download invoices, and track live deliveries.">
+      <OrderDetailContent />
+    </AuthGate>
+  );
+}
+
+function OrderDetailContent() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useAuth();

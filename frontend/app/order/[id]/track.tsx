@@ -18,6 +18,7 @@ import { api, Order, OrderDriverLocation } from '@/src/api/client';
 import { useAuth } from '@/src/context/AuthContext';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 import { StatusBadge } from '@/src/components/StatusBadge';
+import { AuthGate } from '@/src/components/AuthGate';
 
 // Driver simulation constants
 const TOTAL_DURATION_SEC = 20 * 60; // 20 minutes
@@ -243,6 +244,14 @@ function buildMapHTML(opts: {
 }
 
 export default function OrderTrack() {
+  return (
+    <AuthGate reason="Sign in to track your live delivery on the map.">
+      <OrderTrackContent />
+    </AuthGate>
+  );
+}
+
+function OrderTrackContent() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useAuth();
