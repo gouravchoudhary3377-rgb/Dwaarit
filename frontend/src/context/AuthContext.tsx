@@ -17,6 +17,7 @@ type AuthState = {
   signUp: (email: string, password: string, name: string) => Promise<AuthUser>;
   signInWithGoogle: () => Promise<AuthUser | null>;
   signInWithMobile: (mobile: string, otp: string) => Promise<AuthUser>;
+  signInWithFirebase: (firebaseIdToken: string) => Promise<AuthUser>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -155,6 +156,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return exchangeSessionId(sid);
   }, [exchangeSessionId]);
 
+  const signInWithFirebase = useCallback(async (firebaseIdToken: string) => {
+    const resp = await api.post<AuthResponse>('/auth/firebase/verify', { id_token: firebaseIdToken });
+    return applyAuth(resp);
+  }, [applyAuth]);
+
   const signInWithMobile = useCallback(async (mobile: string, otp: string) => {
     const resp = await api.post<AuthResponse>('/auth/mobile/verify-otp', { mobile, otp });
     return applyAuth(resp);
@@ -180,8 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [token, fetchMe, signOut]);
 
   const value = useMemo<AuthState>(
-    () => ({ loading, token, user, signIn, signUp, signInWithGoogle, signInWithMobile, signOut, refresh }),
-    [loading, token, user, signIn, signUp, signInWithGoogle, signInWithMobile, signOut, refresh],
+    () => ({ loading, token, user, signIn, signUp, signInWithGoogle, signInWithMobile, signInWithFirebase, signOut, refresh }),
+    [loading, token, user, signIn, signUp, signInWithGoogle, signInWithMobile, signInWithFirebase, signOut, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

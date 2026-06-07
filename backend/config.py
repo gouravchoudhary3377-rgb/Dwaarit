@@ -22,7 +22,8 @@ RAZORPAY_KEY_ID: str = os.environ.get("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET: str = os.environ.get("RAZORPAY_KEY_SECRET", "")
 RAZORPAY_ENABLED: bool = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
 
-# OTP behaviour
+# Firebase
+FIREBASE_PROJECT_ID: str = os.environ.get("FIREBASE_PROJECT_ID", "")
 OTP_TTL_SECONDS: int = 300  # 5 minutes
 OTP_DEV_MODE: bool = os.environ.get("OTP_DEV_MODE", "false").lower() in ("1", "true", "yes")
 

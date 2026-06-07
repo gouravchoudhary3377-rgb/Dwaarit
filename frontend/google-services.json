@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "594062272690",
+    "project_id": "flynkit-616c7",
+    "storage_bucket": "flynkit-616c7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:594062272690:android:0d0e066b08a81c3e6a01ab",
+        "android_client_info": {
+          "package_name": "com.flynkit.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxsQg4vdjZ9oY7F128YRSag5nVLxygza0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

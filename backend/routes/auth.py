@@ -9,9 +9,10 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from audit import log_event, log_login, recent_failed_login_count
-from config import EMERGENT_SESSION_URL, MSG91_AUTH_KEY, MSG91_ENABLED, OTP_DEV_MODE
+from config import EMERGENT_SESSION_URL, FIREBASE_PROJECT_ID, MSG91_AUTH_KEY, MSG91_ENABLED, OTP_DEV_MODE
 from database import db
 from models import GoogleSessionIn, LoginIn, MobileSendOTPIn, MobileVerifyOTPIn, SignupIn, TokenOut, UserPublic
 from security import (
@@ -412,3 +413,144 @@ async def logout(
         await db.user_sessions.delete_many({"session_token": token})
     await log_event(action="auth.logout", user_id=user_id, request=request)
     return {"ok": True}
+
+
+# -------- Firebase Phone Auth Verification --------
+import jwt as pyjwt
+from cryptography.x509 import load_pem_x509_certificate
+from cryptography.hazmat.backends import default_backend
+
+FIREBASE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+_firebase_certs_cache: dict = {}
+_firebase_certs_expiry: float = 0.0
+
+
+async def _get_firebase_certs() -> dict:
+    """Fetch and cache Firebase public certificates."""
+    import time
+    global _firebase_certs_cache, _firebase_certs_expiry
+    if _firebase_certs_cache and time.time() < _firebase_certs_expiry:
+        return _firebase_certs_cache
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(FIREBASE_CERTS_URL)
+    certs = resp.json()
+    # Cache until max-age from headers (fallback 1 hour)
+    try:
+        cc = resp.headers.get("cache-control", "")
+        max_age = int([p.strip() for p in cc.split(",") if "max-age" in p][0].split("=")[1])
+    except Exception:
+        max_age = 3600
+    _firebase_certs_cache = certs
+    _firebase_certs_expiry = time.time() + max_age
+    return certs
+
+
+async def verify_firebase_id_token(id_token: str) -> dict:
+    """
+    Verify a Firebase ID token using Firebase public certs (no service account needed).
+    Returns decoded claims including `phone_number` and `sub` (uid).
+    """
+    if not FIREBASE_PROJECT_ID:
+        raise HTTPException(500, "Firebase project ID not configured on server")
+    try:
+        header = pyjwt.get_unverified_header(id_token)
+        kid = header.get("kid", "")
+        certs = await _get_firebase_certs()
+        if kid not in certs:
+            raise HTTPException(401, "Firebase token has unknown key ID")
+        cert_pem = certs[kid]
+        cert = load_pem_x509_certificate(cert_pem.encode(), default_backend())
+        public_key = cert.public_key()
+        claims = pyjwt.decode(
+            id_token,
+            public_key,
+            algorithms=["RS256"],
+            audience=FIREBASE_PROJECT_ID,
+            issuer=f"https://securetoken.google.com/{FIREBASE_PROJECT_ID}",
+        )
+        return claims
+    except HTTPException:
+        raise
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(401, "Firebase token has expired")
+    except pyjwt.InvalidTokenError as exc:
+        raise HTTPException(401, f"Invalid Firebase token: {exc}")
+    except Exception as exc:
+        logger.exception("Firebase token verification error")
+        raise HTTPException(401, "Firebase token verification failed") from exc
+
+
+class FirebaseVerifyIn(BaseModel):
+    id_token: str = Field(min_length=10)
+
+
+@router.post("/firebase/verify", response_model=TokenOut)
+async def firebase_verify(body: FirebaseVerifyIn, request: Request):
+    """
+    Exchange a Firebase Phone Auth ID token for our own JWT.
+    - Verifies the Firebase ID token with Google's public certs.
+    - Extracts phone_number from claims.
+    - Finds or auto-creates a customer account.
+    - Returns our JWT (same shape as /auth/login).
+    """
+    from pydantic import BaseModel as _BaseModel  # already imported above
+
+    claims = await verify_firebase_id_token(body.id_token)
+    phone_number: str = claims.get("phone_number", "")
+    firebase_uid: str = claims.get("sub", "")
+
+    if not phone_number and not firebase_uid:
+        raise HTTPException(400, "Firebase token missing phone_number claim")
+
+    # Normalise: strip leading +91 → 10-digit local
+    mobile = phone_number.lstrip("+")
+    if mobile.startswith("91") and len(mobile) == 12:
+        mobile = mobile[2:]
+
+    logger.info("[Firebase] Verified | uid=%s | phone=%s | mobile=%s", firebase_uid, phone_number, mobile)
+
+    # Find existing user by mobile or firebase_uid
+    user = await db.users.find_one(
+        {"$or": [{"firebase_uid": firebase_uid}, {"mobile": mobile, "mobile_verified": True}]},
+        {"_id": 0},
+    )
+
+    if not user:
+        # Auto-create new customer account
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        synthetic_email = f"fb_{mobile}@flynkit.app"
+        user = {
+            "user_id": user_id,
+            "email": synthetic_email,
+            "name": f"User {mobile[-4:]}",
+            "password_hash": None,
+            "role": "customer",
+            "auth_provider": "firebase",
+            "firebase_uid": firebase_uid,
+            "picture": None,
+            "mobile": mobile,
+            "mobile_verified": True,
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.users.insert_one(user)
+        logger.info("[Firebase] New user created | user_id=%s | mobile=%s", user_id, mobile)
+        await log_event(action="auth.signup.firebase", user_id=user_id, role="customer",
+                        details={"mobile": mobile, "firebase_uid": firebase_uid}, request=request)
+    else:
+        # Update firebase_uid and verify mobile if needed
+        upd: dict = {}
+        if not user.get("firebase_uid"):
+            upd["firebase_uid"] = firebase_uid
+        if not user.get("mobile_verified"):
+            upd["mobile"] = mobile
+            upd["mobile_verified"] = True
+        if upd:
+            await db.users.update_one({"user_id": user["user_id"]}, {"$set": upd})
+            user.update(upd)
+
+    await log_login(email=user.get("email", mobile), success=True,
+                    user_id=user["user_id"], provider="firebase_phone", request=request)
+    await log_event(action="auth.login.firebase", user_id=user["user_id"],
+                    role=user.get("role"), request=request)
+
+    return TokenOut(token=issue_jwt(user["user_id"]), user=public_user(user))

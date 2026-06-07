@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,46 +15,55 @@ import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
-import { api } from '@/src/api/client';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { TextField } from '@/src/components/ui/TextField';
+import { sendFirebaseOtp, type PhoneConfirmation } from '@/src/lib/firebaseAuth';
 import { colors, radii, spacing, typography } from '@/src/theme';
 
-const LOGO_URI = 'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png';
+const LOGO_URI =
+  'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png';
 
 function GoogleG() {
   return (
     <Svg width={20} height={20} viewBox="0 0 48 48">
-      <Path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.2 29.3 4 24 4 12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20c0-1.3-.1-2.4-.4-3.5z"/>
-      <Path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.2 29.3 4 24 4c-7.6 0-14.2 4.3-17.7 10.7z"/>
-      <Path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.4-7.2 2.4-5.3 0-9.7-3.3-11.3-7.9l-6.5 5C9.7 39.7 16.3 44 24 44z"/>
-      <Path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C41 35.3 44 30 44 24c0-1.3-.1-2.4-.4-3.5z"/>
+      <Path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.2 29.3 4 24 4 12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <Path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.2 29.3 4 24 4c-7.6 0-14.2 4.3-17.7 10.7z" />
+      <Path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.4-7.2 2.4-5.3 0-9.7-3.3-11.3-7.9l-6.5 5C9.7 39.7 16.3 44 24 44z" />
+      <Path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C41 35.3 44 30 44 24c0-1.3-.1-2.4-.4-3.5z" />
     </Svg>
   );
 }
 
-type Tab = 'email' | 'mobile';
+type Tab = 'phone' | 'email';
+
+/** Strip spaces/dashes and validate 10-digit Indian mobile */
+function parseIndianMobile(raw: string): string | null {
+  let m = raw.trim().replace(/[\s-]/g, '');
+  if (m.startsWith('+91')) m = m.slice(3);
+  else if (m.startsWith('91') && m.length === 12) m = m.slice(2);
+  return /^[6-9]\d{9}$/.test(m) ? m : null;
+}
 
 export default function Login() {
-  const { signIn, signInWithGoogle, signInWithMobile } = useAuth();
-  const [tab, setTab] = useState<Tab>('mobile');
+  const { signIn, signInWithGoogle, signInWithFirebase } = useAuth();
+  const [tab, setTab] = useState<Tab>('phone');
 
-  // Email login state
+  // ----- Email state -----
   const [email, setEmail] = useState('demo@dwaarit.com');
   const [password, setPassword] = useState('Demo@123');
   const [emailErr, setEmailErr] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
-  // Mobile OTP state
+  // ----- Firebase Phone state -----
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [mobileErr, setMobileErr] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [phoneErr, setPhoneErr] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const confirmationRef = useRef<PhoneConfirmation | null>(null);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -69,7 +78,7 @@ export default function Login() {
     return '/(tabs)/home';
   }
 
-  // ---- Email login ----
+  // ---- Email / Password login ----
   async function onEmailLogin() {
     setEmailErr(null);
     if (!email || !password) { setEmailErr('Email and password are required'); return; }
@@ -79,9 +88,7 @@ export default function Login() {
       router.replace(landingForRole(u?.role) as any);
     } catch (e: any) {
       setEmailErr(e?.message ?? 'Login failed');
-    } finally {
-      setEmailLoading(false);
-    }
+    } finally { setEmailLoading(false); }
   }
 
   async function onGoogle() {
@@ -92,52 +99,65 @@ export default function Login() {
       if (u) router.replace(landingForRole(u.role) as any);
     } catch (e: any) {
       setEmailErr(e?.message ?? 'Google sign-in failed');
-    } finally {
-      setGLoading(false);
-    }
+    } finally { setGLoading(false); }
   }
 
-  // ---- Mobile OTP login ----
+  // ---- Firebase Phone Auth ----
   async function onSendOtp() {
-    setMobileErr(null);
-    if (!/^\d{10}$/.test(mobile)) {
-      setMobileErr('Enter a valid 10-digit mobile number');
+    setPhoneErr(null);
+    const parsed = parseIndianMobile(mobile);
+    if (!parsed) {
+      setPhoneErr('Enter a valid 10-digit Indian mobile number (starts with 6-9)');
+      return;
+    }
+    if (Platform.OS === 'web') {
+      setPhoneErr('Firebase Phone Auth is only available on the mobile app. Please use the Flynkit app on your device.');
       return;
     }
     setSendingOtp(true);
     try {
-      const res = await api.post<any>('/auth/mobile/send-otp', { mobile });
-      setOtpSent(true);
+      const confirmation = await sendFirebaseOtp(`+91${parsed}`);
+      confirmationRef.current = confirmation;
+      setStep('otp');
       setResendIn(30);
-      setDevOtp(res?.dev_otp || null);
     } catch (e: any) {
-      setMobileErr(e?.message ?? 'Failed to send OTP');
-    } finally {
-      setSendingOtp(false);
-    }
+      setPhoneErr(e?.message ?? 'Failed to send OTP');
+    } finally { setSendingOtp(false); }
   }
 
   async function onVerifyOtp() {
-    setMobileErr(null);
-    if (!/^\d{6}$/.test(otp)) {
-      setMobileErr('Enter the 6-digit OTP');
-      return;
-    }
-    setVerifyingOtp(true);
+    setPhoneErr(null);
+    if (otp.length !== 6) { setPhoneErr('Enter the 6-digit OTP'); return; }
+    if (!confirmationRef.current) { setPhoneErr('Session expired — resend OTP'); return; }
+    setVerifying(true);
     try {
-      const u = await signInWithMobile(mobile, otp);
+      const firebaseIdToken = await confirmationRef.current.confirm(otp);
+      const u = await signInWithFirebase(firebaseIdToken);
       router.replace(landingForRole(u?.role) as any);
     } catch (e: any) {
-      setMobileErr(e?.message ?? 'Invalid OTP');
-    } finally {
-      setVerifyingOtp(false);
-    }
+      const msg = e?.message ?? 'Verification failed';
+      // Firebase error codes
+      if (msg.includes('invalid-verification-code') || msg.includes('invalid-verification')) {
+        setPhoneErr('Incorrect OTP. Please check and try again.');
+      } else if (msg.includes('session-expired') || msg.includes('code-expired')) {
+        setPhoneErr('OTP expired. Please request a new one.');
+        setStep('phone');
+      } else {
+        setPhoneErr(msg);
+      }
+    } finally { setVerifying(false); }
+  }
+
+  function onResend() {
+    setOtp('');
+    setStep('phone');
+    confirmationRef.current = null;
   }
 
   function onChangeTab(t: Tab) {
     setTab(t);
+    setPhoneErr(null);
     setEmailErr(null);
-    setMobileErr(null);
   }
 
   return (
@@ -145,10 +165,7 @@ export default function Login() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {/* Logo */}
         <View style={styles.brandRow}>
           <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
@@ -159,25 +176,29 @@ export default function Login() {
 
         {/* Tab toggle */}
         <View style={styles.tabs}>
-          <Pressable
-            onPress={() => onChangeTab('mobile')}
-            style={[styles.tab, tab === 'mobile' && styles.tabActive]}
-          >
-            <Text style={[styles.tabText, tab === 'mobile' && styles.tabTextActive]}>📱 Mobile OTP</Text>
+          <Pressable onPress={() => onChangeTab('phone')} style={[styles.tab, tab === 'phone' && styles.tabActive]}>
+            <Text style={[styles.tabText, tab === 'phone' && styles.tabTextActive]}>📱 Phone</Text>
           </Pressable>
-          <Pressable
-            onPress={() => onChangeTab('email')}
-            style={[styles.tab, tab === 'email' && styles.tabActive]}
-          >
+          <Pressable onPress={() => onChangeTab('email')} style={[styles.tab, tab === 'email' && styles.tabActive]}>
             <Text style={[styles.tabText, tab === 'email' && styles.tabTextActive]}>✉️ Email</Text>
           </Pressable>
         </View>
 
-        {/* Mobile OTP tab */}
-        {tab === 'mobile' && (
+        {/* ===== PHONE TAB ===== */}
+        {tab === 'phone' && (
           <View style={styles.form}>
-            {!otpSent ? (
+            {step === 'phone' ? (
               <>
+                {/* Web notice */}
+                {Platform.OS === 'web' && (
+                  <View style={styles.webNotice}>
+                    <Text style={styles.webNoticeText}>
+                      📲 Firebase Phone Auth requires the Flynkit mobile app.{"\n"}Download it on iOS or Android to sign in with your phone.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Phone input */}
                 <View style={styles.phoneRow}>
                   <View style={styles.countryCode}>
                     <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
@@ -185,7 +206,7 @@ export default function Login() {
                   <TextInput
                     style={styles.phoneInput}
                     value={mobile}
-                    onChangeText={(t) => { setMobile(t.replace(/[^0-9]/g, '').slice(0, 10)); setMobileErr(null); }}
+                    onChangeText={(t) => { setMobile(t.replace(/[^0-9]/g, '').slice(0, 10)); setPhoneErr(null); }}
                     placeholder="10-digit mobile number"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
@@ -193,35 +214,35 @@ export default function Login() {
                     testID="mobile-input"
                   />
                 </View>
-                {mobileErr ? <Text style={styles.err}>{mobileErr}</Text> : null}
+
+                {phoneErr ? <Text style={styles.err}>{phoneErr}</Text> : null}
+
                 <PrimaryButton
                   title={sendingOtp ? 'Sending OTP…' : 'Send OTP'}
                   onPress={onSendOtp}
                   loading={sendingOtp}
+                  disabled={Platform.OS === 'web'}
                   testID="send-otp-btn"
                 />
               </>
             ) : (
+              /* OTP step */
               <>
                 <View style={styles.otpHeader}>
-                  <Text style={styles.otpTitle}>OTP sent to +91 {mobile}</Text>
-                  <Pressable onPress={() => { setOtpSent(false); setOtp(''); setDevOtp(null); }} hitSlop={8}>
+                  <View>
+                    <Text style={styles.otpTitle}>OTP sent to +91 {mobile}</Text>
+                    <Text style={styles.otpSub}>Delivered via Firebase</Text>
+                  </View>
+                  <Pressable onPress={onResend} hitSlop={8}>
                     <Text style={styles.changeLink}>Change</Text>
                   </Pressable>
                 </View>
 
-                {devOtp ? (
-                  <View style={styles.devOtpBox}>
-                    <Text style={styles.devOtpLabel}>Dev mode OTP:</Text>
-                    <Text style={styles.devOtpVal}>{devOtp}</Text>
-                  </View>
-                ) : null}
-
                 <TextInput
                   style={styles.otpInput}
                   value={otp}
-                  onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '').slice(0, 6)); setMobileErr(null); }}
-                  placeholder="Enter 6-digit OTP"
+                  onChangeText={(t) => { setOtp(t.replace(/[^0-9]/g, '').slice(0, 6)); setPhoneErr(null); }}
+                  placeholder="• • • • • •"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="number-pad"
                   maxLength={6}
@@ -230,19 +251,19 @@ export default function Login() {
                   testID="otp-input"
                 />
 
-                {mobileErr ? <Text style={styles.err}>{mobileErr}</Text> : null}
+                {phoneErr ? <Text style={styles.err}>{phoneErr}</Text> : null}
 
                 <PrimaryButton
-                  title={verifyingOtp ? 'Verifying…' : 'Verify & Login'}
+                  title={verifying ? 'Verifying…' : 'Verify & Login'}
                   onPress={onVerifyOtp}
-                  loading={verifyingOtp}
+                  loading={verifying}
                   testID="verify-otp-btn"
                 />
 
                 <Pressable
-                  onPress={resendIn > 0 ? undefined : onSendOtp}
-                  style={styles.resendRow}
+                  onPress={resendIn > 0 ? undefined : onResend}
                   disabled={resendIn > 0}
+                  style={styles.resendRow}
                 >
                   <Text style={[styles.resendText, resendIn > 0 && { color: colors.textMuted }]}>
                     {resendIn > 0 ? `Resend OTP in ${resendIn}s` : 'Resend OTP'}
@@ -253,7 +274,7 @@ export default function Login() {
           </View>
         )}
 
-        {/* Email tab */}
+        {/* ===== EMAIL TAB ===== */}
         {tab === 'email' && (
           <View style={styles.form}>
             <TextField
@@ -321,18 +342,26 @@ const styles = StyleSheet.create({
     padding: 4,
     marginTop: spacing.sm,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: radii.md,
-    alignItems: 'center',
+  tab: { flex: 1, paddingVertical: 10, borderRadius: radii.md, alignItems: 'center' },
+  tabActive: {
+    backgroundColor: colors.white,
+    ...({ shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } as any),
   },
-  tabActive: { backgroundColor: colors.white, ...({ shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 } as any) },
   tabText: { ...typography.captionBold, color: colors.textMuted },
   tabTextActive: { color: colors.primary },
 
   form: { gap: spacing.md, marginTop: spacing.sm },
   err: { color: colors.error, ...typography.caption },
+
+  // Web notice
+  webNotice: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: radii.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#FFD600',
+  },
+  webNoticeText: { ...typography.caption, color: '#7B5800', textAlign: 'center', lineHeight: 20 },
 
   // Phone input
   phoneRow: {
@@ -364,19 +393,8 @@ const styles = StyleSheet.create({
   // OTP step
   otpHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   otpTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  otpSub: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
   changeLink: { ...typography.captionBold, color: colors.primary },
-  devOtpBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#FFF9E6',
-    borderRadius: radii.md,
-    padding: spacing.sm,
-    borderWidth: 1,
-    borderColor: '#FFD600',
-  },
-  devOtpLabel: { ...typography.caption, color: '#7B5800' },
-  devOtpVal: { ...typography.h2, color: '#E65100', letterSpacing: 6 },
   otpInput: {
     borderWidth: 2,
     borderColor: colors.primary,
