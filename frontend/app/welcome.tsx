@@ -3,7 +3,6 @@ import {
   Animated,
   Dimensions,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
@@ -15,89 +14,61 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const HERO_IMG =
   'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/xh7f9s9r_E581B53F-0AA5-4BD5-B599-09652EE9A8D6.PNG';
 
-const { height: SCREEN_H } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(32)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(24)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
 
   return (
-    <View style={styles.root}>
-      <Animated.View
-        style={[
-          styles.inner,
-          {
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-            paddingTop: insets.top + 24,
-            paddingBottom: insets.bottom + 20,
-          },
-        ]}
-      >
-        {/* ── Top: Headline + Subtitle ── */}
-        <View style={styles.textBlock}>
-          <Text style={styles.headline}>
-            From Store to{'\n'}Door in Minutes.
-          </Text>
+    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
+      <Animated.View style={[styles.inner, { opacity: fade, transform: [{ translateY: slide }] }]}>
+
+        {/* ─── TOP: Headline + Subtitle ─── */}
+        <View style={styles.topBlock}>
+          <Text style={styles.headline}>{'FROM STORE TO\nDOOR IN MINUTES.'}</Text>
           <Text style={styles.subtitle}>
-            Fresh groceries, daily essentials and household products delivered
-            straight to your doorstep.
+            Fresh groceries, daily essentials and household products delivered right to your doorstep.
           </Text>
         </View>
 
-        {/* ── Center: Hero Image ── */}
-        <View style={styles.heroWrap}>
+        {/* ─── MIDDLE: Hero Image ─── */}
+        <View style={styles.heroBlock}>
+          {/* Shadow plane */}
+          <View style={styles.shadow} />
           <Image
             source={{ uri: HERO_IMG }}
-            style={styles.heroImage}
+            style={styles.heroImg}
             contentFit="contain"
-            transition={300}
+            contentPosition="center"
+            transition={400}
           />
-          {/* Subtle shadow plane */}
-          <View style={styles.heroShadow} />
         </View>
 
-        {/* ── Bottom: Buttons ── */}
-        <View style={styles.actions}>
-          {/* Get Started */}
+        {/* ─── BOTTOM: Buttons ─── */}
+        <View style={styles.bottomBlock}>
           <Pressable
-            style={({ pressed }) => [
-              styles.btnPrimary,
-              pressed && styles.btnPrimaryPressed,
-            ]}
+            style={({ pressed }) => [styles.btn, styles.btnPrimary, pressed && { opacity: 0.88 }]}
             onPress={() => router.push('/(auth)/signup')}
           >
             <Text style={styles.btnPrimaryText}>Get Started</Text>
           </Pressable>
 
-          {/* Have an account? Log In */}
           <Pressable
-            style={({ pressed }) => [
-              styles.btnSecondary,
-              pressed && styles.btnSecondaryPressed,
-            ]}
+            style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && { opacity: 0.88 }]}
             onPress={() => router.push('/(auth)/login')}
           >
             <Text style={styles.btnSecondaryText}>Have an account? Log In</Text>
           </Pressable>
 
-          {/* Browse as Guest */}
           <Pressable
             style={styles.btnGhost}
             onPress={() => router.replace('/(tabs)/home')}
@@ -106,6 +77,7 @@ export default function Welcome() {
             <Text style={styles.btnGhostText}>Browse as Guest</Text>
           </Pressable>
         </View>
+
       </Animated.View>
     </View>
   );
@@ -119,87 +91,84 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     paddingHorizontal: 24,
-    justifyContent: 'space-between',
   },
 
-  // ── Text block ──
-  textBlock: {
-    gap: 12,
+  /* ── Top 20% ── */
+  topBlock: {
+    flex: 2,
+    justifyContent: 'flex-end',
+    paddingBottom: 8,
+    gap: 10,
   },
   headline: {
-    fontSize: 36,
+    fontSize: 46,
     fontWeight: '900',
     color: '#1F2937',
-    lineHeight: 42,
-    letterSpacing: -0.5,
+    lineHeight: 52,
+    letterSpacing: -1,
+    textTransform: 'uppercase',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
     color: '#6B7280',
-    lineHeight: 24,
-    maxWidth: 320,
+    lineHeight: 22,
   },
 
-  // ── Hero ──
-  heroWrap: {
+  /* ── Middle 50% ── */
+  heroBlock: {
+    flex: 5,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    marginVertical: 8,
   },
-  heroImage: {
+  heroImg: {
     width: '100%',
-    height: SCREEN_H * 0.36,
-    // subtle drop shadow via container styling
+    height: H * 0.44,
+    maxHeight: 380,
   },
-  heroShadow: {
+  shadow: {
+    position: 'absolute',
+    bottom: '8%',
     width: '60%',
-    height: 12,
+    height: 16,
+    borderRadius: 100,
     backgroundColor: 'rgba(0,0,0,0.10)',
-    borderRadius: 50,
-    marginTop: -8,
     alignSelf: 'center',
-    // blur emulated via opacity + rounded shape
   },
 
-  // ── Buttons ──
-  actions: {
+  /* ── Bottom 30% ── */
+  bottomBlock: {
+    flex: 3,
+    justifyContent: 'flex-end',
     gap: 12,
+    paddingBottom: 8,
   },
 
-  // Primary — filled orange
+  btn: {
+    height: 58,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   btnPrimary: {
     backgroundColor: '#FF6B00',
-    borderRadius: 28,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
     shadowColor: '#FF6B00',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
-  },
-  btnPrimaryPressed: {
-    backgroundColor: '#E55F00',
-    shadowOpacity: 0.2,
   },
   btnPrimaryText: {
     fontSize: 17,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 
-  // Secondary — white with orange border
   btnSecondary: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#FF6B00',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -207,25 +176,20 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  btnSecondaryPressed: {
-    backgroundColor: '#FFF4E8',
-  },
   btnSecondaryText: {
     fontSize: 17,
     fontWeight: '700',
     color: '#FF6B00',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 
-  // Ghost — dark text
   btnGhost: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   btnGhostText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '500',
     color: '#9CA3AF',
   },
 });
