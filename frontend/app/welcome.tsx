@@ -29,7 +29,7 @@ export default function Welcome() {
   }, []);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom + 8 }]}>
+    <View style={[styles.root, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 8 }]}>
       <Animated.View style={[styles.inner, { opacity: fade, transform: [{ translateY: slide }] }]}>
 
         {/* ─── TOP: Headline + Subtitle ─── */}
