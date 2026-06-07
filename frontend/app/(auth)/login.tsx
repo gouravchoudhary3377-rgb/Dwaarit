@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { router, Link } from 'expo-router';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuth } from '@/src/context/AuthContext';
@@ -20,8 +22,11 @@ import { TextField } from '@/src/components/ui/TextField';
 import { sendFirebaseOtp, type PhoneConfirmation } from '@/src/lib/firebaseAuth';
 import { colors, radii, spacing, typography } from '@/src/theme';
 
-const LOGO_URI =
-  'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png';
+const HERO_IMAGE =
+  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/xh7f9s9r_E581B53F-0AA5-4BD5-B599-09652EE9A8D6.PNG';
+
+const { height: SCREEN_H } = Dimensions.get('window');
+const HERO_HEIGHT = SCREEN_H * 0.42;
 
 function GoogleG() {
   return (
@@ -36,7 +41,6 @@ function GoogleG() {
 
 type Tab = 'phone' | 'email';
 
-/** Strip spaces/dashes and validate 10-digit Indian mobile */
 function parseIndianMobile(raw: string): string | null {
   let m = raw.trim().replace(/[\s-]/g, '');
   if (m.startsWith('+91')) m = m.slice(3);
@@ -45,17 +49,18 @@ function parseIndianMobile(raw: string): string | null {
 }
 
 export default function Login() {
+  const insets = useSafeAreaInsets();
   const { signIn, signInWithGoogle, signInWithFirebase } = useAuth();
   const [tab, setTab] = useState<Tab>('phone');
 
-  // ----- Email state -----
-  const [email, setEmail] = useState('demo@dwaarit.com');
-  const [password, setPassword] = useState('Demo@123');
+  // Email state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [emailErr, setEmailErr] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
-  // ----- Firebase Phone state -----
+  // Phone state
   const [mobile, setMobile] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -78,7 +83,6 @@ export default function Login() {
     return '/(tabs)/home';
   }
 
-  // ---- Email / Password login ----
   async function onEmailLogin() {
     setEmailErr(null);
     if (!email || !password) { setEmailErr('Email and password are required'); return; }
@@ -86,32 +90,25 @@ export default function Login() {
     try {
       const u = await signIn(email.trim(), password);
       router.replace(landingForRole(u?.role) as any);
-    } catch (e: any) {
-      setEmailErr(e?.message ?? 'Login failed');
-    } finally { setEmailLoading(false); }
+    } catch (e: any) { setEmailErr(e?.message ?? 'Login failed'); }
+    finally { setEmailLoading(false); }
   }
 
   async function onGoogle() {
-    setEmailErr(null);
     setGLoading(true);
     try {
       const u = await signInWithGoogle();
       if (u) router.replace(landingForRole(u.role) as any);
-    } catch (e: any) {
-      setEmailErr(e?.message ?? 'Google sign-in failed');
-    } finally { setGLoading(false); }
+    } catch (e: any) { setEmailErr(e?.message ?? 'Google sign-in failed'); }
+    finally { setGLoading(false); }
   }
 
-  // ---- Firebase Phone Auth ----
   async function onSendOtp() {
     setPhoneErr(null);
     const parsed = parseIndianMobile(mobile);
-    if (!parsed) {
-      setPhoneErr('Enter a valid 10-digit Indian mobile number (starts with 6-9)');
-      return;
-    }
+    if (!parsed) { setPhoneErr('Enter a valid 10-digit Indian mobile number (starts with 6–9)'); return; }
     if (Platform.OS === 'web') {
-      setPhoneErr('Firebase Phone Auth is only available on the mobile app. Please use the Flynkit app on your device.');
+      setPhoneErr('Firebase Phone Auth is only available on the mobile app.');
       return;
     }
     setSendingOtp(true);
@@ -120,9 +117,8 @@ export default function Login() {
       confirmationRef.current = confirmation;
       setStep('otp');
       setResendIn(30);
-    } catch (e: any) {
-      setPhoneErr(e?.message ?? 'Failed to send OTP');
-    } finally { setSendingOtp(false); }
+    } catch (e: any) { setPhoneErr(e?.message ?? 'Failed to send OTP'); }
+    finally { setSendingOtp(false); }
   }
 
   async function onVerifyOtp() {
@@ -136,73 +132,62 @@ export default function Login() {
       router.replace(landingForRole(u?.role) as any);
     } catch (e: any) {
       const msg = e?.message ?? 'Verification failed';
-      // Firebase error codes
-      if (msg.includes('invalid-verification-code') || msg.includes('invalid-verification')) {
-        setPhoneErr('Incorrect OTP. Please check and try again.');
-      } else if (msg.includes('session-expired') || msg.includes('code-expired')) {
-        setPhoneErr('OTP expired. Please request a new one.');
-        setStep('phone');
-      } else {
-        setPhoneErr(msg);
-      }
+      if (msg.includes('invalid-verification-code')) setPhoneErr('Incorrect OTP.');
+      else if (msg.includes('session-expired') || msg.includes('code-expired')) { setPhoneErr('OTP expired.'); setStep('phone'); }
+      else setPhoneErr(msg);
     } finally { setVerifying(false); }
-  }
-
-  function onResend() {
-    setOtp('');
-    setStep('phone');
-    confirmationRef.current = null;
-  }
-
-  function onChangeTab(t: Tab) {
-    setTab(t);
-    setPhoneErr(null);
-    setEmailErr(null);
   }
 
   return (
     <KeyboardAvoidingView
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Logo */}
-        <View style={styles.brandRow}>
-          <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
+      {/* Hero image — full width, top of screen */}
+      <View style={[styles.heroWrap, { height: HERO_HEIGHT }]}>
+        <Image
+          source={{ uri: HERO_IMAGE }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+        />
+        {/* Gradient scrim at bottom of hero */}
+        <View style={styles.heroScrim} />
+        {/* Tagline over image */}
+        <View style={[styles.taglineWrap, { bottom: 28 }]}>
+          <Text style={styles.tagline}>From Store to Door</Text>
+          <Text style={styles.taglineSub}>in minutes</Text>
         </View>
+      </View>
 
-        <Text style={styles.h1}>Welcome back</Text>
-        <Text style={styles.sub}>Sign in to continue your grocery run.</Text>
-
+      {/* Form card — slides up over the hero */}
+      <ScrollView
+        style={styles.card}
+        contentContainerStyle={[styles.cardContent, { paddingBottom: insets.bottom + 24 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Tab toggle */}
         <View style={styles.tabs}>
-          <Pressable onPress={() => onChangeTab('phone')} style={[styles.tab, tab === 'phone' && styles.tabActive]}>
+          <Pressable onPress={() => { setTab('phone'); setPhoneErr(null); }} style={[styles.tab, tab === 'phone' && styles.tabActive]}>
             <Text style={[styles.tabText, tab === 'phone' && styles.tabTextActive]}>📱 Phone</Text>
           </Pressable>
-          <Pressable onPress={() => onChangeTab('email')} style={[styles.tab, tab === 'email' && styles.tabActive]}>
+          <Pressable onPress={() => { setTab('email'); setEmailErr(null); }} style={[styles.tab, tab === 'email' && styles.tabActive]}>
             <Text style={[styles.tabText, tab === 'email' && styles.tabTextActive]}>✉️ Email</Text>
           </Pressable>
         </View>
 
-        {/* ===== PHONE TAB ===== */}
+        {/* Phone tab */}
         {tab === 'phone' && (
           <View style={styles.form}>
             {step === 'phone' ? (
               <>
-                {/* Web notice */}
                 {Platform.OS === 'web' && (
                   <View style={styles.webNotice}>
-                    <Text style={styles.webNoticeText}>
-                      📲 Firebase Phone Auth requires the Flynkit mobile app.{"\n"}Download it on iOS or Android to sign in with your phone.
-                    </Text>
+                    <Text style={styles.webNoticeText}>📲 Firebase Phone Auth requires the Flynkit mobile app.</Text>
                   </View>
                 )}
-
-                {/* Phone input */}
                 <View style={styles.phoneRow}>
-                  <View style={styles.countryCode}>
-                    <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
-                  </View>
+                  <View style={styles.countryCode}><Text style={styles.countryCodeText}>🇮🇳 +91</Text></View>
                   <TextInput
                     style={styles.phoneInput}
                     value={mobile}
@@ -211,33 +196,19 @@ export default function Login() {
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     maxLength={10}
-                    testID="mobile-input"
                   />
                 </View>
-
                 {phoneErr ? <Text style={styles.err}>{phoneErr}</Text> : null}
-
-                <PrimaryButton
-                  title={sendingOtp ? 'Sending OTP…' : 'Send OTP'}
-                  onPress={onSendOtp}
-                  loading={sendingOtp}
-                  disabled={Platform.OS === 'web'}
-                  testID="send-otp-btn"
-                />
+                <PrimaryButton title={sendingOtp ? 'Sending…' : 'Send OTP'} onPress={onSendOtp} loading={sendingOtp} disabled={Platform.OS === 'web'} />
               </>
             ) : (
-              /* OTP step */
               <>
                 <View style={styles.otpHeader}>
-                  <View>
-                    <Text style={styles.otpTitle}>OTP sent to +91 {mobile}</Text>
-                    <Text style={styles.otpSub}>Delivered via Firebase</Text>
-                  </View>
-                  <Pressable onPress={onResend} hitSlop={8}>
+                  <Text style={styles.otpTitle}>OTP sent to +91 {mobile}</Text>
+                  <Pressable onPress={() => { setStep('phone'); setOtp(''); confirmationRef.current = null; }} hitSlop={8}>
                     <Text style={styles.changeLink}>Change</Text>
                   </Pressable>
                 </View>
-
                 <TextInput
                   style={styles.otpInput}
                   value={otp}
@@ -248,25 +219,12 @@ export default function Login() {
                   maxLength={6}
                   textAlign="center"
                   autoFocus
-                  testID="otp-input"
                 />
-
                 {phoneErr ? <Text style={styles.err}>{phoneErr}</Text> : null}
-
-                <PrimaryButton
-                  title={verifying ? 'Verifying…' : 'Verify & Login'}
-                  onPress={onVerifyOtp}
-                  loading={verifying}
-                  testID="verify-otp-btn"
-                />
-
-                <Pressable
-                  onPress={resendIn > 0 ? undefined : onResend}
-                  disabled={resendIn > 0}
-                  style={styles.resendRow}
-                >
+                <PrimaryButton title={verifying ? 'Verifying…' : 'Verify & Login'} onPress={onVerifyOtp} loading={verifying} />
+                <Pressable onPress={resendIn > 0 ? undefined : onSendOtp} disabled={resendIn > 0} style={styles.resendRow}>
                   <Text style={[styles.resendText, resendIn > 0 && { color: colors.textMuted }]}>
-                    {resendIn > 0 ? `Resend OTP in ${resendIn}s` : 'Resend OTP'}
+                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend OTP'}
                   </Text>
                 </Pressable>
               </>
@@ -274,60 +232,29 @@ export default function Login() {
           </View>
         )}
 
-        {/* ===== EMAIL TAB ===== */}
+        {/* Email tab */}
         {tab === 'email' && (
           <View style={styles.form}>
-            <TextField
-              label="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              autoComplete="email"
-              keyboardType="email-address"
-              placeholder="you@example.com"
-              testID="login-email-input"
-            />
-            <TextField
-              label="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="••••••••"
-              testID="login-password-input"
-            />
+            <TextField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" />
+            <TextField label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="••••••••" />
             {emailErr ? <Text style={styles.err}>{emailErr}</Text> : null}
-            <PrimaryButton title="Sign In" onPress={onEmailLogin} loading={emailLoading} testID="login-btn" />
-
+            <PrimaryButton title="Sign In" onPress={onEmailLogin} loading={emailLoading} />
             <View style={styles.dividerRow}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.divider} />
             </View>
-
-            <PrimaryButton
-              title="Continue with Google"
-              onPress={onGoogle}
-              variant="ghost"
-              loading={gLoading}
-              leftIcon={<GoogleG />}
-            />
+            <PrimaryButton title="Continue with Google" onPress={onGoogle} variant="ghost" loading={gLoading} leftIcon={<GoogleG />} />
           </View>
         )}
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>New to Flynkit?</Text>
           <Link href="/(auth)/signup" asChild>
-            <Pressable hitSlop={8}>
-              <Text style={styles.footerLink}>Create an account</Text>
-            </Pressable>
+            <Pressable hitSlop={8}><Text style={styles.footerLink}>Create account</Text></Pressable>
           </Link>
         </View>
-
-        <Pressable
-          onPress={() => router.replace('/(tabs)/home')}
-          style={styles.guestBtn}
-          hitSlop={8}
-        >
+        <Pressable onPress={() => router.replace('/(tabs)/home')} style={styles.guestBtn}>
           <Text style={styles.guestBtnText}>Continue as Guest →</Text>
         </Pressable>
       </ScrollView>
@@ -336,20 +263,51 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: spacing.lg, paddingTop: spacing.xxl, gap: spacing.md },
-  brandRow: { alignItems: 'center', marginBottom: spacing.sm },
-  logoImg: { width: 220, height: 130 },
-  h1: { ...typography.h1, color: colors.textPrimary, marginTop: spacing.lg },
-  sub: { ...typography.body, color: colors.textSecondary },
+  root: { flex: 1, backgroundColor: '#FF5500' },
+
+  // Hero
+  heroWrap: { width: '100%', overflow: 'hidden' },
+  heroScrim: {
+    ...StyleSheet.absoluteFillObject,
+    background: undefined,
+    backgroundColor: 'transparent',
+    // gradient-like scrim from bottom
+    borderBottomLeftRadius: 0,
+    bottom: 0, left: 0, right: 0, height: 80,
+    position: 'absolute',
+    // Use a semi-transparent gradient via layered Views
+  },
+  taglineWrap: { position: 'absolute', left: 24, right: 24 },
+  tagline: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: colors.white,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  taglineSub: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.92)',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+
+  // White card
+  card: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -28,
+  },
+  cardContent: { padding: spacing.lg, gap: spacing.md },
 
   // Tabs
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: 4,
-    marginTop: spacing.sm,
-  },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 4 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: radii.md, alignItems: 'center' },
   tabActive: {
     backgroundColor: colors.white,
@@ -358,74 +316,31 @@ const styles = StyleSheet.create({
   tabText: { ...typography.captionBold, color: colors.textMuted },
   tabTextActive: { color: colors.primary },
 
-  form: { gap: spacing.md, marginTop: spacing.sm },
+  form: { gap: spacing.md },
   err: { color: colors.error, ...typography.caption },
 
-  // Web notice
-  webNotice: {
-    backgroundColor: '#FFF8E1',
-    borderRadius: radii.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: '#FFD600',
-  },
-  webNoticeText: { ...typography.caption, color: '#7B5800', textAlign: 'center', lineHeight: 20 },
+  webNotice: { backgroundColor: '#FFF8E1', borderRadius: radii.md, padding: spacing.md, borderWidth: 1, borderColor: '#FFD600' },
+  webNoticeText: { ...typography.caption, color: '#7B5800', textAlign: 'center' },
 
-  // Phone input
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    backgroundColor: colors.white,
-    overflow: 'hidden',
-  },
-  countryCode: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: Platform.OS === 'ios' ? 15 : 12,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    backgroundColor: colors.surface,
-  },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radii.lg, backgroundColor: colors.white, overflow: 'hidden' },
+  countryCode: { paddingHorizontal: spacing.md, paddingVertical: Platform.OS === 'ios' ? 15 : 12, borderRightWidth: 1, borderRightColor: colors.border, backgroundColor: colors.surface },
   countryCodeText: { ...typography.bodyBold, color: colors.textPrimary },
-  phoneInput: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: Platform.OS === 'ios' ? 15 : 12,
-    ...typography.body,
-    color: colors.textPrimary,
-    letterSpacing: 1,
-  },
+  phoneInput: { flex: 1, paddingHorizontal: spacing.md, paddingVertical: Platform.OS === 'ios' ? 15 : 12, ...typography.body, color: colors.textPrimary, letterSpacing: 1 },
 
-  // OTP step
   otpHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   otpTitle: { ...typography.bodyBold, color: colors.textPrimary },
-  otpSub: { ...typography.tiny, color: colors.textSecondary, marginTop: 2 },
   changeLink: { ...typography.captionBold, color: colors.primary },
-  otpInput: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: radii.lg,
-    paddingVertical: 16,
-    fontSize: 28,
-    fontWeight: '900' as const,
-    color: colors.textPrimary,
-    letterSpacing: 12,
-    textAlign: 'center',
-    backgroundColor: colors.white,
-  },
+  otpInput: { borderWidth: 2, borderColor: colors.primary, borderRadius: radii.lg, paddingVertical: 16, fontSize: 28, fontWeight: '900' as const, color: colors.textPrimary, letterSpacing: 12, textAlign: 'center', backgroundColor: colors.white },
   resendRow: { alignItems: 'center', paddingVertical: 4 },
   resendText: { ...typography.captionBold, color: colors.primary },
 
-  // Divider
-  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xs },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   divider: { flex: 1, height: 1, backgroundColor: colors.border },
   dividerText: { color: colors.textMuted, ...typography.tiny },
 
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.lg },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.sm },
   footerText: { color: colors.textSecondary, ...typography.body },
   footerLink: { color: colors.primary, ...typography.bodyBold },
-  guestBtn: { alignItems: 'center', paddingVertical: 8, marginTop: spacing.sm },
+  guestBtn: { alignItems: 'center', paddingVertical: 8 },
   guestBtnText: { ...typography.body, color: colors.textMuted },
 });
