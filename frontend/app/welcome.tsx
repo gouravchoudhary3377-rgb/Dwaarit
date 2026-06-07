@@ -114,7 +114,7 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FF5500',
   },
   inner: {
     flex: 1,
@@ -129,14 +129,14 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#1A1A1A',
+    color: '#FFFFFF',
     lineHeight: 42,
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
     fontWeight: '400',
-    color: '#5C5C5C',
+    color: 'rgba(255,255,255,0.88)',
     lineHeight: 24,
     maxWidth: 320,
   },
@@ -168,56 +168,51 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // Primary — filled orange
+  // Primary — white with orange text (inverted on orange bg)
   btnPrimary: {
-    backgroundColor: '#FF6600',
-    borderRadius: 28,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FF6600',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  btnPrimaryPressed: {
-    backgroundColor: '#E05500',
-    shadowOpacity: 0.2,
-  },
-  btnPrimaryText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-
-  // Secondary — white with orange border
-  btnSecondary: {
     backgroundColor: '#FFFFFF',
     borderRadius: 28,
     height: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FF6600',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  btnPrimaryPressed: {
+    backgroundColor: '#F5F5F5',
+    shadowOpacity: 0.1,
+  },
+  btnPrimaryText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FF5500',
+    letterSpacing: 0.2,
+  },
+
+  // Secondary — semi-transparent white border
+  btnSecondary: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 28,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   btnSecondaryPressed: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: 'rgba(255,255,255,0.28)',
   },
   btnSecondaryText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FF6600',
+    color: '#FFFFFF',
     letterSpacing: 0.2,
   },
 
-  // Ghost — text only
+  // Ghost — white text
   btnGhost: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -226,8 +221,6 @@ const styles = StyleSheet.create({
   btnGhostText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#888888',
-    textDecorationLine: 'underline',
-    textDecorationColor: '#BBBBBB',
+    color: 'rgba(255,255,255,0.8)',
   },
 });

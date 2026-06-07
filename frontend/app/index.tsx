@@ -30,5 +30,5 @@ export default function Gate() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFF3E0', alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: '#FF5500', alignItems: 'center', justifyContent: 'center' },
 });
