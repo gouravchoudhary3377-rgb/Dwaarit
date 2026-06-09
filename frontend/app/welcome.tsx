@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -11,48 +11,72 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const POSTER =
-  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ncaapl5x_new%20flynk.png';
+import { api } from '@/src/api/client';
 
-const CORAL = '#E8735A';
+type WelcomeConfig = {
+  poster_url: string;
+  bg_color: string;
+  accent_color: string;
+  btn1_text: string;
+  btn2_text: string;
+  btn3_text: string;
+};
+
+// Fallback defaults if API is unreachable
+const DEFAULTS: WelcomeConfig = {
+  poster_url:
+    'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ncaapl5x_new%20flynk.png',
+  bg_color: '#F5E2D0',
+  accent_color: '#E8735A',
+  btn1_text: 'Get Started',
+  btn2_text: 'Have an account? Log In',
+  btn3_text: 'Browse as Guest',
+};
 
 const { width: W, height: H } = Dimensions.get('window');
-// Image is square (1080×1080). Fill full screen width and keep 1:1 ratio.
-const IMG_H = W;
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
   const fade   = useRef(new Animated.Value(0)).current;
+  const [cfg, setCfg] = useState<WelcomeConfig>(DEFAULTS);
 
   useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+    // Load branding config from backend
+    api.get<{ welcome: WelcomeConfig }>('/branding', null)
+      .then((data) => { if (data?.welcome) setCfg({ ...DEFAULTS, ...data.welcome }); })
+      .catch(() => { /* keep defaults */ })
+      .finally(() => {
+        Animated.timing(fade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      });
   }, []);
 
-  return (
-    <Animated.View style={[styles.root, { opacity: fade }]}>
+  const CORAL = cfg.accent_color || DEFAULTS.accent_color;
 
-      {/* ─── Poster image: full width, no cropping ─── */}
+  return (
+    <Animated.View style={[styles.root, { backgroundColor: cfg.bg_color, opacity: fade }]}>
+
+      {/* Full-width poster image — unchanged */}
       <Image
-        source={{ uri: POSTER }}
+        source={{ uri: cfg.poster_url }}
         style={styles.poster}
         contentFit="fill"
         transition={300}
       />
 
-      {/* ─── Buttons: fill remaining space below the image ─── */}
+      {/* Buttons in remaining space */}
       <View style={[styles.actions, { paddingBottom: insets.bottom + 8 }]}>
         <Pressable
-          style={({ pressed }) => [styles.btn, styles.btnPrimary, pressed && { opacity: 0.88 }]}
+          style={({ pressed }) => [styles.btn, { backgroundColor: CORAL, opacity: pressed ? 0.88 : 1 }, styles.btnShadow]}
           onPress={() => router.push('/(auth)/signup')}
         >
-          <Text style={styles.btnPrimaryText}>Get Started</Text>
+          <Text style={styles.btnPrimaryText}>{cfg.btn1_text}</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && { opacity: 0.88 }]}
+          style={({ pressed }) => [styles.btn, styles.btnSecondary, { borderColor: CORAL, opacity: pressed ? 0.88 : 1 }]}
           onPress={() => router.push('/(auth)/login')}
         >
-          <Text style={styles.btnSecondaryText}>Have an account? Log In</Text>
+          <Text style={[styles.btnSecondaryText, { color: CORAL }]}>{cfg.btn2_text}</Text>
         </Pressable>
 
         <Pressable
@@ -60,7 +84,7 @@ export default function Welcome() {
           onPress={() => router.replace('/(tabs)/home')}
           hitSlop={12}
         >
-          <Text style={styles.btnGhostText}>Browse as Guest</Text>
+          <Text style={[styles.btnGhostText, { color: CORAL }]}>{cfg.btn3_text}</Text>
         </Pressable>
       </View>
 
@@ -69,17 +93,13 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#F5E2D0', // matches image peach background
-  },
+  root: { flex: 1 },
 
   poster: {
     width: W,
-    height: IMG_H,    // exactly screen width (1:1 image)
+    height: W,   // 1:1 image
   },
 
-  // Remaining screen space below the image — fill it with buttons
   actions: {
     flex: 1,
     justifyContent: 'center',
@@ -93,36 +113,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnPrimary: {
-    backgroundColor: CORAL,
-    shadowColor: CORAL,
+  btnShadow: {
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.28,
     shadowRadius: 10,
     elevation: 7,
   },
-  btnPrimaryText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  btnSecondary: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: CORAL,
-  },
-  btnSecondaryText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: CORAL,
-  },
-  btnGhost: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  btnGhostText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: CORAL,
-  },
+  btnPrimaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnSecondary: { backgroundColor: '#FFFFFF', borderWidth: 1.5 },
+  btnSecondaryText: { fontSize: 16, fontWeight: '600' },
+  btnGhost: { alignItems: 'center', paddingVertical: 8 },
+  btnGhostText: { fontSize: 14, fontWeight: '500' },
 });
