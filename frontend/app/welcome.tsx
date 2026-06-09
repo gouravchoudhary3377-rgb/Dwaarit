@@ -11,20 +11,25 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Hero: the Flynkit grocery bag
 const HERO_IMG =
-  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ybcapic4_IMG_5488.PNG';
+  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/htqs25bj_E581B53F-0AA5-4BD5-B599-09652EE9A8D6.PNG';
+
+// Brand coral — matches the reference mockup
+const CORAL = '#E8735A';
+const BG    = '#FFF0EA'; // warm light peach
 
 const { width: W, height: H } = Dimensions.get('window');
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
-  const fade = useRef(new Animated.Value(0)).current;
-  const slide = useRef(new Animated.Value(24)).current;
+  const fade  = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slide, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.timing(fade,  { toValue: 1, duration: 480, useNativeDriver: true }),
+      Animated.timing(slide, { toValue: 0, duration: 480, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -34,15 +39,16 @@ export default function Welcome() {
 
         {/* ─── TOP: Headline + Subtitle ─── */}
         <View style={styles.topBlock}>
-          <Text style={styles.headline}>{'FROM STORE TO\nDOOR IN MINUTES.'}</Text>
+          {/* Headline — "MINUTES." gets the coral accent */}
+          <Text style={styles.headlineDark}>{'FROM STORE\nTO DOOR IN'}</Text>
+          <Text style={styles.headlineCoral}>MINUTES.</Text>
           <Text style={styles.subtitle}>
-            Fresh groceries, daily essentials and household products delivered right to your doorstep.
+            {'Fresh groceries, daily essentials and\nhousehold products delivered right\nto your doorstep.'}
           </Text>
         </View>
 
-        {/* ─── MIDDLE: Hero Image ─── */}
+        {/* ─── MIDDLE: Hero image ─── */}
         <View style={styles.heroBlock}>
-          {/* Shadow plane */}
           <View style={styles.shadow} />
           <Image
             source={{ uri: HERO_IMG }}
@@ -86,36 +92,44 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFF4E8',
+    backgroundColor: BG,
   },
   inner: {
     flex: 1,
     paddingHorizontal: 24,
   },
 
-  /* ── Top 20% ── */
+  /* ── Top block */
   topBlock: {
     flex: 2,
     justifyContent: 'flex-end',
-    paddingBottom: 8,
-    gap: 10,
+    paddingBottom: 4,
+    gap: 4,
   },
-  headline: {
+  headlineDark: {
     fontSize: 46,
     fontWeight: '900',
-    color: '#1F2937',
+    color: '#1A1A1A',
     lineHeight: 52,
     letterSpacing: -1,
-    textTransform: 'uppercase',
+  },
+  headlineCoral: {
+    fontSize: 46,
+    fontWeight: '900',
+    color: CORAL,
+    lineHeight: 52,
+    letterSpacing: -1,
+    marginTop: -4,
   },
   subtitle: {
     fontSize: 15,
     fontWeight: '400',
-    color: '#6B7280',
+    color: '#555555',
     lineHeight: 22,
+    marginTop: 6,
   },
 
-  /* ── Middle 50% ── */
+  /* ── Hero */
   heroBlock: {
     flex: 5,
     alignItems: 'center',
@@ -124,36 +138,34 @@ const styles = StyleSheet.create({
   heroImg: {
     width: '100%',
     height: H * 0.44,
-    maxHeight: 380,
+    maxHeight: 390,
   },
   shadow: {
     position: 'absolute',
     bottom: '8%',
-    width: '60%',
-    height: 16,
+    width: '55%',
+    height: 14,
     borderRadius: 100,
-    backgroundColor: 'rgba(0,0,0,0.10)',
+    backgroundColor: 'rgba(0,0,0,0.09)',
     alignSelf: 'center',
   },
 
-  /* ── Bottom 30% ── */
+  /* ── Buttons */
   bottomBlock: {
     flex: 3,
     justifyContent: 'flex-end',
     gap: 12,
     paddingBottom: 8,
   },
-
   btn: {
-    height: 58,
+    height: 56,
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   btnPrimary: {
-    backgroundColor: '#FF6B00',
-    shadowColor: '#FF6B00',
+    backgroundColor: CORAL,
+    shadowColor: CORAL,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -161,28 +173,26 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-
   btnSecondary: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#FF6B00',
+    borderColor: CORAL,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 2,
   },
   btnSecondaryText: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#FF6B00',
-    letterSpacing: 0.3,
+    fontWeight: '600',
+    color: CORAL,
+    letterSpacing: 0.2,
   },
-
   btnGhost: {
     alignItems: 'center',
     paddingVertical: 10,
@@ -190,6 +200,6 @@ const styles = StyleSheet.create({
   btnGhostText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#9CA3AF',
+    color: CORAL,
   },
 });
