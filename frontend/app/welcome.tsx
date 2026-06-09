@@ -12,7 +12,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HERO_IMG =
-  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/xh7f9s9r_E581B53F-0AA5-4BD5-B599-09652EE9A8D6.PNG';
+  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/ybcapic4_IMG_5488.PNG';
 
 const { width: W, height: H } = Dimensions.get('window');
 
