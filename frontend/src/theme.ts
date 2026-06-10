@@ -2,9 +2,9 @@
 import { Platform } from 'react-native';
 
 export const colors = {
-  primary: '#FF5A00',
-  primaryDark: '#E04F00',
-  primarySoft: '#FFF1E6',
+  primary: '#E8735A',
+  primaryDark: '#D0604A',
+  primarySoft: '#FFF0EB',
   background: '#FFFFFF',
   surface: '#F7F7F7',
   surfaceAlt: '#FAFAFA',
@@ -61,7 +61,7 @@ export const shadow = {
   strong: Platform.select({
     web: { boxShadow: '0 8px 16px rgba(255,90,0,0.18)' } as any,
     default: {
-      shadowColor: '#FF5A00',
+      shadowColor: '#E8735A',
       shadowOpacity: 0.18,
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 8 },
