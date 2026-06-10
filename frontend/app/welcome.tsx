@@ -1,9 +1,6 @@
 /**
- * Onboarding / Welcome Screen
- * ───────────────────────────────────
- * Image:   width 100%, height 78% of screen, resizeMode contain
- * Buttons: remaining 22% of screen
- * BG:      #F7EFE8
+ * Onboarding Screen — Full-screen cover image, buttons overlaid at bottom
+ * Professional Blinkit / Flink / Foodora style
  */
 import React from 'react';
 import {
@@ -17,34 +14,31 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// The uploaded onboarding poster — displayed as-is, no modification
 const POSTER =
   'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/1e4x9p6b_new%20new.png';
 
-const CORAL  = '#E8735A';
-const BG     = '#F7EFE8';
-
-const { height: H } = Dimensions.get('window');
+const CORAL = '#E8735A';
 
 export default function Welcome() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 20 }]}>
+    <View style={styles.root}>
 
-      {/* ── Image: 78% of screen height, centered, contain ── */}
-      <View style={styles.imageSection}>
-        <Image
-          source={{ uri: POSTER }}
-          style={styles.poster}
-          contentFit="contain"
-          contentPosition="center"
-        />
-      </View>
+      {/* Full-screen image — cover, touches all edges, no margins */}
+      <Image
+        source={{ uri: POSTER }}
+        style={styles.poster}
+        contentFit="cover"
+        contentPosition="top center"
+      />
 
-      {/* ── Buttons: 22% of screen height ── */}
-      <View style={[styles.buttonsSection, { paddingBottom: Math.max(insets.bottom, 30) }]}>
-        {/* Button 1: Get Started */}
+      {/* Absolute bottom overlay — buttons only */}
+      <View style={[
+        styles.overlay,
+        { bottom: Math.max(insets.bottom + 20, 40) },
+      ]}>
+        {/* Get Started */}
         <Pressable
           style={({ pressed }) => [styles.btn, styles.btnPrimary, pressed && { opacity: 0.88 }]}
           onPress={() => router.push('/(auth)/signup')}
@@ -52,7 +46,7 @@ export default function Welcome() {
           <Text style={styles.btnPrimaryText}>Get Started</Text>
         </Pressable>
 
-        {/* Button 2: Have an account? Log In */}
+        {/* Have an account? Log In */}
         <Pressable
           style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && { opacity: 0.88 }]}
           onPress={() => router.push('/(auth)/login')}
@@ -60,7 +54,7 @@ export default function Welcome() {
           <Text style={styles.btnSecondaryText}>Have an account? Log In</Text>
         </Pressable>
 
-        {/* Button 3: Browse as Guest */}
+        {/* Browse as Guest */}
         <Pressable
           style={styles.btnGhost}
           onPress={() => router.replace('/(tabs)/home')}
@@ -75,31 +69,29 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
+  // Full-screen container — no margins, no padding, no restrictions
   root: {
     flex: 1,
-    backgroundColor: BG,
-    paddingLeft: 0,
-    paddingRight: 0,
+    backgroundColor: '#F7EFE8',
   },
 
-  // Image occupies 78% of screen height
-  imageSection: {
-    width: '100%',
-    height: H * 0.78,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Image fills every pixel of the screen
   poster: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     height: '100%',
   },
 
-  // Buttons occupy 22% of screen height
-  buttonsSection: {
-    height: H * 0.22,
-    paddingHorizontal: 24,
-    justifyContent: 'center',
-    gap: 0,
+  // Buttons overlaid at bottom — no card, no wrapper
+  overlay: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    gap: 14,
   },
 
   btn: {
@@ -107,15 +99,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
   },
 
-  // Primary — coral filled
   btnPrimary: {
     backgroundColor: CORAL,
-    shadowColor: CORAL,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 6,
   },
@@ -126,9 +116,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // Secondary — white with coral border
   btnSecondary: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1.5,
     borderColor: CORAL,
   },
@@ -139,12 +128,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // Ghost — text only, height 28
   btnGhost: {
-    height: 28,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 0,
   },
   btnGhostText: {
     fontSize: 14,
