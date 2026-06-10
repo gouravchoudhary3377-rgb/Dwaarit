@@ -11,8 +11,8 @@ export default function Gate() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      // Unauthenticated → Welcome / Landing screen
-      router.replace('/welcome');
+      // Unauthenticated → Launch animation → then Welcome screen
+      router.replace('/splash');
     } else if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'store_manager') {
       router.replace('/admin/orders');
     } else if (user.role === 'rider') {
