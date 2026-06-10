@@ -23,7 +23,7 @@ import { sendFirebaseOtp, type PhoneConfirmation } from '@/src/lib/firebaseAuth'
 import { colors, radii, spacing, typography } from '@/src/theme';
 
 const HERO_IMAGE =
-  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/xh7f9s9r_E581B53F-0AA5-4BD5-B599-09652EE9A8D6.PNG';
+  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/iksyojhj_ChatGPT%20Image%20Jun%2010%2C%202026%2C%2003_13_40%20AM.png';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_H * 0.42;
