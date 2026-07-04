@@ -19,7 +19,7 @@ import { TextField } from '@/src/components/ui/TextField';
 import { colors, radii, spacing, typography } from '@/src/theme';
 
 const HERO_IMAGE =
-  'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/iksyojhj_ChatGPT%20Image%20Jun%2010%2C%202026%2C%2003_13_40%20AM.png';
+  'https://drive.google.com/uc?export=view&id=1ibOgf9s8WjejMg1UE81szcVJWvNDI1Le';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_H * 0.38;
