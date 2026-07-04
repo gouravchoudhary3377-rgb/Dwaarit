@@ -163,20 +163,6 @@ export default function Home() {
   /* ---------- Header content above the product grid ---------- */
   const ListHeader = (
     <View>
-      {/* Hero promo banner */}
-      <Pressable
-        style={styles.bannerOuter}
-        onPress={() => router.push('/(tabs)/home')}
-        activeOpacity={0.97}
-      >
-        <Image
-          source={{ uri: 'https://drive.google.com/uc?export=view&id=1ibOgf9s8WjejMg1UE81szcVJWvNDI1Le' }}
-          style={styles.heroBannerImg}
-          contentFit="cover"
-          transition={200}
-        />
-      </Pressable>
-
       {/* Categories grid */}
       <View style={styles.sectionWrap}>
         <Text style={styles.sectionTitle}>Shop by Category</Text>
