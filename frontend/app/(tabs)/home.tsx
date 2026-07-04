@@ -170,7 +170,7 @@ export default function Home() {
         activeOpacity={0.97}
       >
         <Image
-          source={{ uri: 'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/3a6ea13b6ad107e80b52000dea8d0a6471ef917b5ccea8086f4204916dadb279.png' }}
+          source={{ uri: 'https://customer-assets.emergentagent.com/job_bdde9f90-cad7-4873-bec0-5782f2227a6f/artifacts/jtjx7kma_flynkit%20home%20bbn.png' }}
           style={styles.heroBannerImg}
           contentFit="cover"
           transition={200}
