@@ -22,6 +22,8 @@ import { CartIcon } from '@/src/components/icons/TabIcons';
 import { ProductRowSkeleton, CategoryPillSkeleton } from '@/src/components/ui/Skeleton';
 import { useCart } from '@/src/store/cartStore';
 import { displayLabel, shortAddress, useAddressStore } from '@/src/store/addressStore';
+import { useActiveStore } from '@/src/store/activeStoreStore';
+import { useNearestStore } from '@/src/hooks/useNearestStore';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 
 /* ---------- Small inline icons ---------- */
@@ -83,6 +85,8 @@ export default function Home() {
   const activeAddress = useAddressStore((s) =>
     s.activeId ? s.addresses.find((a) => a.id === s.activeId) ?? null : null,
   );
+  const activeStore = useActiveStore((s) => s.store);
+  const { resolve: resolveStore } = useNearestStore();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -93,11 +97,19 @@ export default function Home() {
 
   const listRef = useRef<FlatList<any>>(null);
 
+  // Resolve nearest store whenever active address changes
+  useEffect(() => {
+    if (activeAddress?.lat && activeAddress?.lng) {
+      resolveStore(activeAddress.lat, activeAddress.lng);
+    }
+  }, [activeAddress?.lat, activeAddress?.lng]);
+
   const load = useCallback(async () => {
     try {
+      const storeParam = activeStore ? `&store_id=${activeStore.store_id}` : '';
       const [items, cats] = await Promise.all([
-        api.get<Product[]>('/products', token),
-        api.get<{ categories: string[] }>('/products/categories', token),
+        api.get<Product[]>(`/products?${storeParam}`, token),
+        api.get<{ categories: string[] }>(`/products/categories?${storeParam}`, token),
       ]);
       setProducts(items);
       setCategories(cats.categories);
@@ -107,7 +119,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [token]);
+  }, [token, activeStore?.store_id]);
 
   useEffect(() => {
     load();
@@ -282,8 +294,10 @@ export default function Home() {
               <ChevronDown />
             </View>
             <Text style={styles.locSub} numberOfLines={1}>
-              {activeAddress
-                ? `${shortAddress(activeAddress)} · 5-min delivery`
+              {activeStore
+                ? `${activeStore.name} · ${activeStore.distance_km ? `${activeStore.distance_km.toFixed(1)} km` : 'Serving your area'}`
+                : activeAddress
+                ? `${shortAddress(activeAddress)} · 18 min delivery`
                 : 'Tap to choose where to deliver'}
             </Text>
           </View>

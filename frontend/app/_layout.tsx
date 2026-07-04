@@ -9,6 +9,7 @@ import { useIconFonts } from '@/src/hooks/use-icon-fonts';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useCart } from '@/src/store/cartStore';
 import { useAddressStore } from '@/src/store/addressStore';
+import { useActiveStore } from '@/src/store/activeStoreStore';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { AddressAuthSync } from '@/src/components/AddressAuthSync';
 import { colors } from '@/src/theme';
@@ -19,11 +20,13 @@ export default function RootLayout() {
   const [loaded, error] = useIconFonts();
   const hydrateCart = useCart((s) => s.hydrate);
   const hydrateAddresses = useAddressStore((s) => s.hydrate);
+  const hydrateActiveStore = useActiveStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrateCart();
     hydrateAddresses();
-  }, [hydrateCart, hydrateAddresses]);
+    hydrateActiveStore();
+  }, [hydrateCart, hydrateAddresses, hydrateActiveStore]);
 
   useEffect(() => {
     if (loaded || error) SplashScreen.hideAsync();

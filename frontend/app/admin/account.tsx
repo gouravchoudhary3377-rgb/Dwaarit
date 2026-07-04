@@ -257,6 +257,7 @@ export default function AdminAccount() {
           <LinkRow label="Coupons" hint="Create, edit & toggle discount codes" onPress={() => router.push('/admin/coupons')} />
           <LinkRow label="Banners" hint="Manage home screen carousel" onPress={() => router.push('/admin/banners')} />
           <LinkRow label="Drivers" hint="Onboard & manage delivery partners" onPress={() => router.push('/admin/drivers')} />
+          <LinkRow label="📦 Store Inventory" hint="Manage stock, price & availability per store" onPress={() => router.push('/admin/store-inventory')} />
           <LinkRow label="🎨 Page Branding" hint="Edit opening screen & login page" onPress={() => router.push('/admin/branding')} last />
         </View>
 

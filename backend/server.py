@@ -17,6 +17,7 @@ from routes.admin import router as admin_router
 from routes.auth import router as auth_router
 from routes.banners import router as banners_router
 from routes.branding import router as branding_router
+from routes.inventory import router as inventory_router
 from routes.categories import router as categories_router
 from routes.coupons import router as coupons_router
 from routes.drivers import router as drivers_router
@@ -28,7 +29,7 @@ from routes.store import router as store_router
 from routes.support import router as support_router
 from routes.wallet import router as wallet_router
 from routes.wishlist import router as wishlist_router
-from seed import seed_categories, seed_coupons, seed_store_manager, seed_users_and_products
+from seed import seed_categories, seed_coupons, seed_demo_store, seed_store_manager, seed_users_and_products
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s :: %(message)s"
@@ -55,6 +56,7 @@ api.include_router(store_router)
 api.include_router(coupons_router)
 api.include_router(banners_router)
 api.include_router(branding_router)
+api.include_router(inventory_router)
 
 
 @api.get("/")
@@ -75,6 +77,7 @@ async def on_startup():
     await seed_categories()
     await seed_store_manager()
     await seed_coupons()
+    await seed_demo_store()
     log.info("Dwaarit API ready.")
 
 

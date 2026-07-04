@@ -37,8 +37,14 @@ export function ProductCard({ product, onPress }: Props) {
   const inCart =
     lines.find((l) => l.product.product_id === product.product_id)?.quantity ?? 0;
 
-  const outOfStock = (product.stock ?? 0) <= 0;
-  const lowStock = !outOfStock && (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5;
+  // Store-aware out-of-stock: prefer is_out_of_stock from inventory, fallback to catalog stock
+  const outOfStock = (product as any).is_out_of_stock ?? (product.stock ?? 0) <= 0;
+  const storeQty = (product as any).store_qty;
+  const lowStock = !outOfStock && (
+    storeQty !== undefined
+      ? storeQty > 0 && storeQty <= ((product as any).low_stock_threshold ?? 5)
+      : (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5
+  );
 
   // Selling price (preferred) with backward-compat fallback to legacy `price`.
   const sellingPrice = product.selling_price ?? product.price;

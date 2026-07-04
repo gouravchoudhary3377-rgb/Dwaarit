@@ -52,3 +52,16 @@ async def ensure_indexes() -> None:
     await db.coupons.create_index("code", unique=True)
     await db.coupons.create_index("active")
     await db.coupons.create_index("expires_at")
+
+    # ---- Phase 10: Multi-Store Inventory ----
+    await db.store_inventory.create_index(
+        [("store_id", 1), ("product_id", 1)], unique=True, name="store_product_idx"
+    )
+    await db.store_inventory.create_index("store_id")
+    await db.store_inventory.create_index("product_id")
+    await db.store_inventory.create_index([("store_id", 1), ("is_available", 1)])
+    # Geo index for nearest-store lookup
+    try:
+        await db.stores.create_index([("location", "2dsphere")], sparse=True)
+    except Exception:
+        pass

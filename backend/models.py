@@ -292,6 +292,9 @@ class StoreIn(BaseModel):
     lng: Optional[float] = None
     phone: Optional[str] = None
     manager_email: Optional[EmailStr] = None
+    delivery_radius_km: float = 5.0
+    open_time: str = "07:00"
+    close_time: str = "23:00"
 
 
 class StoreUpdate(BaseModel):
@@ -305,6 +308,26 @@ class StoreUpdate(BaseModel):
     phone: Optional[str] = None
     manager_id: Optional[str] = None
     is_active: Optional[bool] = None
+    delivery_radius_km: Optional[float] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+
+
+# ---------- Store Inventory ----------
+class StoreInventoryIn(BaseModel):
+    qty: int = Field(ge=0)
+    selling_price: Optional[float] = None
+    mrp: Optional[float] = None
+    is_available: bool = True
+    low_stock_threshold: int = 5
+
+
+class StoreInventoryUpdate(BaseModel):
+    qty: Optional[int] = Field(default=None, ge=0)
+    selling_price: Optional[float] = None
+    mrp: Optional[float] = None
+    is_available: Optional[bool] = None
+    low_stock_threshold: Optional[int] = None
 
 
 # ---------- Order Assignment ----------

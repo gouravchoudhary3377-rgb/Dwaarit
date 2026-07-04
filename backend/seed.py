@@ -347,3 +347,80 @@ async def seed_coupons() -> None:
     ]
     await db.coupons.insert_many(defaults)
     log.info("Seeded %d default coupons.", len(defaults))
+
+
+
+async def seed_demo_store() -> None:
+    """Seed one demo store and populate inventory for all existing products."""
+    import uuid as _uuid
+    from datetime import datetime, timezone
+
+    # ── 1. Create demo store if it doesn't exist ────────────────────────────
+    DEMO_CODE = "FLYNKIT_CENTRAL"
+    existing = await db.stores.find_one({"code": DEMO_CODE})
+    if not existing:
+        store_id = f"store_{_uuid.uuid4().hex[:10]}"
+        await db.stores.insert_one({
+            "store_id": store_id,
+            "code": DEMO_CODE,
+            "name": "Flynkit Central",
+            "address": "MG Road, Central Business District",
+            "city": "Bengaluru",
+            "pincode": "560001",
+            "lat": 12.9716,   # Bengaluru city centre
+            "lng": 77.5946,
+            "phone": "+91-80-12345678",
+            "delivery_radius_km": 15.0,
+            "open_time": "07:00",
+            "close_time": "23:00",
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc),
+        })
+        log.info("Seeded demo store: %s (%s)", "Flynkit Central", store_id)
+    else:
+        store_id = existing["store_id"]
+        # Ensure new fields exist on the existing store record
+        upd = {}
+        if "delivery_radius_km" not in existing:
+            upd["delivery_radius_km"] = 15.0
+        if "open_time" not in existing:
+            upd["open_time"] = "07:00"
+        if "close_time" not in existing:
+            upd["close_time"] = "23:00"
+        if upd:
+            await db.stores.update_one({"store_id": store_id}, {"$set": upd})
+        log.info("Demo store already exists: %s", store_id)
+
+    # ── 2. Seed inventory for every product that lacks a record ─────────────
+    products = await db.products.find({}, {"_id": 0}).to_list(2000)
+    now = datetime.now(timezone.utc)
+    seeded = 0
+    for p in products:
+        pid = p["product_id"]
+        exists = await db.store_inventory.find_one(
+            {"store_id": store_id, "product_id": pid}
+        )
+        if not exists:
+            sp = p.get("selling_price") or p.get("price", 0)
+            await db.store_inventory.update_one(
+                {"store_id": store_id, "product_id": pid},
+                {
+                    "$setOnInsert": {
+                        "inv_id": f"inv_{_uuid.uuid4().hex[:12]}",
+                        "store_id": store_id,
+                        "product_id": pid,
+                        "qty": 50,
+                        "selling_price": sp,
+                        "mrp": p.get("mrp") or sp,
+                        "is_available": True,
+                        "low_stock_threshold": 5,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                },
+                upsert=True,
+            )
+            seeded += 1
+
+    if seeded:
+        log.info("Seeded %d inventory records for store %s", seeded, store_id)
