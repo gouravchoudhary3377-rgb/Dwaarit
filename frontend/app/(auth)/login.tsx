@@ -54,7 +54,9 @@ function parseIndianMobile(raw: string): string | null {
 export default function Login() {
   const insets = useSafeAreaInsets();
   const { signIn, signInWithGoogle, signInWithFirebase } = useAuth();
-  const [tab, setTab] = useState<Tab>('phone');
+  // Mobile OTP tab — DISABLED (feature hidden, code preserved)
+  // const [tab, setTab] = useState<Tab>('phone');
+  const [tab, setTab] = useState<Tab>('email');
 
   // Email state
   const [email, setEmail] = useState('');
@@ -174,7 +176,9 @@ export default function Login() {
           <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
         </View>
 
-        {/* Tab toggle */}
+        {/* Tab toggle — HIDDEN while Phone OTP is disabled */}
+        {/* To re-enable: remove the null below and restore the View */}
+        {null && (
         <View style={styles.tabs}>
           <Pressable onPress={() => { setTab('phone'); setPhoneErr(null); }} style={[styles.tab, tab === 'phone' && styles.tabActive]}>
             <Text style={[styles.tabText, tab === 'phone' && styles.tabTextActive]}>📱 Phone</Text>
@@ -183,6 +187,7 @@ export default function Login() {
             <Text style={[styles.tabText, tab === 'email' && styles.tabTextActive]}>✉️ Email</Text>
           </Pressable>
         </View>
+        )}
 
         {/* Phone tab */}
         {tab === 'phone' && (
