@@ -23,7 +23,7 @@ import { sendFirebaseOtp, type PhoneConfirmation } from '@/src/lib/firebaseAuth'
 import { colors, radii, spacing, typography } from '@/src/theme';
 
 const HERO_IMAGE =
-  'https://drive.google.com/uc?export=view&id=1ibOgf9s8WjejMg1UE81szcVJWvNDI1Le';
+  'https://lh3.googleusercontent.com/d/1NipX0Vz47S0BF9Q7aiNBCnowq-vXaE3o';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_H * 0.42;
