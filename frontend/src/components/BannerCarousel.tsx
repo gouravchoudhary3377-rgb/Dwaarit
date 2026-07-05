@@ -151,7 +151,7 @@ function BannerSlide({
         <Image
           source={{ uri: banner.media_url }}
           style={styles.media}
-          contentFit="cover"
+          contentFit="contain"
           transition={150}
         />
       )}
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   slide: {
-    aspectRatio: 16 / 9,
+    aspectRatio: 3 / 2,   // matches banner image (1536×1024)
   },
   media: {
     width: '100%',
