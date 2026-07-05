@@ -94,7 +94,7 @@ async def get_store_inventory(store_id: str, _: dict = Depends(require_admin)):
             }
         },
         {"$unwind": {"path": "$product", "preserveNullAndEmptyArrays": True}},
-        {"$project": {"_id": 0}},
+        {"$project": {"_id": 0, "product._id": 0}},
         {"$sort": {"product.category": 1, "product.name": 1}},
     ]
     items = await db.store_inventory.aggregate(pipeline).to_list(2000)

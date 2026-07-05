@@ -285,32 +285,42 @@ class RiderOnlineIn(BaseModel):
 class StoreIn(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     code: str = ""
+    manager_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    manager_email: Optional[EmailStr] = None
+    gst_number: Optional[str] = None
     address: str = ""
     city: str = ""
+    state: str = ""
     pincode: str = ""
     lat: Optional[float] = None
     lng: Optional[float] = None
-    phone: Optional[str] = None
-    manager_email: Optional[EmailStr] = None
     delivery_radius_km: float = 5.0
     open_time: str = "07:00"
     close_time: str = "23:00"
+    is_active: bool = True
 
 
 class StoreUpdate(BaseModel):
     name: Optional[str] = None
     code: Optional[str] = None
+    manager_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    manager_email: Optional[EmailStr] = None
+    manager_id: Optional[str] = None
+    gst_number: Optional[str] = None
     address: Optional[str] = None
     city: Optional[str] = None
+    state: Optional[str] = None
     pincode: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
-    phone: Optional[str] = None
-    manager_id: Optional[str] = None
-    is_active: Optional[bool] = None
     delivery_radius_km: Optional[float] = None
     open_time: Optional[str] = None
     close_time: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 # ---------- Store Inventory ----------

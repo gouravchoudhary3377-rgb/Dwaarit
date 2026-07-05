@@ -28,6 +28,7 @@ from models import (
 )
 from security import (
     get_current_user,
+    require_admin,
     require_rider,
     require_staff,
     require_super_admin,
@@ -68,65 +69,108 @@ async def _audit(actor: dict, action: str, target: str = "", meta: Optional[dict
 @router.get("/admin/stores")
 async def list_stores(_: dict = Depends(require_staff)):
     docs = await db.stores.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    # attach driver count
-    if docs:
-        for s in docs:
-            s["driver_count"] = await db.drivers.count_documents({"store_id": s["store_id"]})
+    for s in (docs or []):
+        s["driver_count"] = await db.drivers.count_documents({"store_id": s["store_id"]})
+        s["inventory_count"] = await db.store_inventory.count_documents({"store_id": s["store_id"]})
+        s["products_count"] = await db.store_inventory.count_documents({"store_id": s["store_id"], "is_available": True})
     return docs
 
 
+@router.get("/admin/stores/{store_id}")
+async def get_store(store_id: str, _: dict = Depends(require_staff)):
+    doc = await db.stores.find_one({"store_id": store_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Store not found")
+    doc["inventory_count"] = await db.store_inventory.count_documents({"store_id": store_id})
+    doc["products_count"] = await db.store_inventory.count_documents({"store_id": store_id, "is_available": True})
+    doc["pending_orders"] = await db.orders.count_documents({"store_id": store_id, "status": {"$in": ["pending", "accepted", "out_for_delivery"]}})
+    doc["completed_orders"] = await db.orders.count_documents({"store_id": store_id, "status": "delivered"})
+    pipeline = [
+        {"$match": {"store_id": store_id, "status": "delivered"}},
+        {"$group": {"_id": None, "revenue": {"$sum": "$total"}}},
+    ]
+    rev = await db.orders.aggregate(pipeline).to_list(1)
+    doc["revenue"] = rev[0]["revenue"] if rev else 0.0
+    return doc
+
+
+async def _next_store_code() -> str:
+    """Generate next sequential store code: STR001, STR002, …"""
+    count = await db.stores.count_documents({})
+    for attempt in range(count + 1, count + 200):
+        code = f"STR{attempt:03d}"
+        if not await db.stores.find_one({"code": code}):
+            return code
+    return f"STR{uuid.uuid4().hex[:4].upper()}"
+
+
 @router.post("/admin/stores")
-async def create_store(body: StoreIn, admin: dict = Depends(require_super_admin)):
-    code = body.code or f"ST-{uuid.uuid4().hex[:4].upper()}"
+async def create_store(body: StoreIn, admin: dict = Depends(require_admin)):
+    code = body.code.strip() if body.code else await _next_store_code()
     if await db.stores.find_one({"code": code}):
-        raise HTTPException(409, "Store code already exists")
+        raise HTTPException(409, f"Store code '{code}' already exists")
     doc = {
         "store_id": f"store_{uuid.uuid4().hex[:10]}",
         "name": body.name,
         "code": code,
+        "manager_name": body.manager_name,
+        "phone": body.phone,
+        "email": body.email,
+        "manager_email": str(body.manager_email) if body.manager_email else None,
+        "gst_number": body.gst_number,
         "address": body.address,
         "city": body.city,
+        "state": body.state,
         "pincode": body.pincode,
         "lat": body.lat,
         "lng": body.lng,
-        "phone": body.phone,
-        "manager_email": body.manager_email,
+        "delivery_radius_km": body.delivery_radius_km,
+        "open_time": body.open_time,
+        "close_time": body.close_time,
         "manager_id": None,
-        "is_active": True,
+        "is_active": body.is_active,
         "created_at": _now(),
     }
-    # Link manager if provided email exists as user
     if body.manager_email:
         manager = await db.users.find_one({"email": str(body.manager_email).lower()})
         if manager:
             doc["manager_id"] = manager["user_id"]
-            # Promote to store_manager if currently customer
             if manager.get("role") in ("customer", None):
                 await db.users.update_one(
                     {"user_id": manager["user_id"]}, {"$set": {"role": "store_manager"}}
                 )
     await db.stores.insert_one(doc)
+    doc.pop("_id", None)
     await _audit(admin, "store.create", doc["store_id"])
-    return _public_driver(doc)
+    return doc
 
 
 @router.patch("/admin/stores/{store_id}")
-async def update_store(store_id: str, body: StoreUpdate, admin: dict = Depends(require_super_admin)):
+async def update_store(store_id: str, body: StoreUpdate, admin: dict = Depends(require_admin)):
     upd = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
     if not upd:
         raise HTTPException(400, "No changes")
+    upd["updated_at"] = _now()
     res = await db.stores.update_one({"store_id": store_id}, {"$set": upd})
     if res.matched_count == 0:
         raise HTTPException(404, "Store not found")
     await _audit(admin, "store.update", store_id, upd)
-    return {"ok": True}
+    doc = await db.stores.find_one({"store_id": store_id}, {"_id": 0})
+    return doc
 
 
 @router.delete("/admin/stores/{store_id}")
-async def delete_store(store_id: str, admin: dict = Depends(require_super_admin)):
+async def delete_store(store_id: str, admin: dict = Depends(require_admin)):
+    active_orders = await db.orders.count_documents({
+        "store_id": store_id,
+        "status": {"$in": ["pending", "accepted", "out_for_delivery"]},
+    })
+    if active_orders > 0:
+        raise HTTPException(400, f"Store has {active_orders} active order(s). Complete or cancel them first.")
     if await db.drivers.count_documents({"store_id": store_id}) > 0:
-        raise HTTPException(400, "Store has drivers — reassign first")
+        raise HTTPException(400, "Store has drivers — reassign them first")
     await db.stores.delete_one({"store_id": store_id})
+    await db.store_inventory.delete_many({"store_id": store_id})
     await _audit(admin, "store.delete", store_id)
     return {"ok": True}
 
