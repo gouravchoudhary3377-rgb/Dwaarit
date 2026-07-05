@@ -417,7 +417,7 @@ function ProfileContent() {
         {/* Footer */}
         <View style={styles.footer}>
           <Image
-            source={{ uri: 'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png' }}
+            source={{ uri: 'https://lh3.googleusercontent.com/d/1eFN1jd-SBnKn0S2l4OLJpyyST0kVZ8X2' }}
             style={styles.footerLogo}
             contentFit="contain"
           />
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
 
   /* Footer */
   footer: { alignItems: 'center', marginTop: spacing.xl, gap: 4 },
-  footerLogo: { width: 140, height: 70 },
+  footerLogo: { width: 80, height: 80, borderRadius: 12 },
   footerBrand: {
     ...typography.h3,
     color: colors.primary,

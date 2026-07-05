@@ -25,6 +25,9 @@ import { colors, radii, spacing, typography } from '@/src/theme';
 const HERO_IMAGE =
   'https://lh3.googleusercontent.com/d/1NipX0Vz47S0BF9Q7aiNBCnowq-vXaE3o';
 
+const LOGO_URI =
+  'https://lh3.googleusercontent.com/d/1eFN1jd-SBnKn0S2l4OLJpyyST0kVZ8X2';
+
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_H * 0.42;
 
@@ -166,6 +169,11 @@ export default function Login() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Logo at top of card */}
+        <View style={styles.logoRow}>
+          <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
+        </View>
+
         {/* Tab toggle */}
         <View style={styles.tabs}>
           <Pressable onPress={() => { setTab('phone'); setPhoneErr(null); }} style={[styles.tab, tab === 'phone' && styles.tabActive]}>
@@ -295,6 +303,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 6,
   },
+  logoRow: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: 4 },
+  logoImg: { width: 100, height: 100, borderRadius: 16 },
 
   // White card
   card: {

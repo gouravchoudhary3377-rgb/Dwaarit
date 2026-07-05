@@ -19,7 +19,7 @@ import { useAuth } from '@/src/context/AuthContext';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 
 const LOGO =
-  'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png';
+  'https://lh3.googleusercontent.com/d/1eFN1jd-SBnKn0S2l4OLJpyyST0kVZ8X2';
 
 function LockIcon() {
   return (
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     gap: spacing.md,
   },
-  logo: { width: 140, height: 70, marginBottom: spacing.sm },
+  logo: { width: 100, height: 100, borderRadius: 16, marginBottom: spacing.sm },
   iconWrap: {
     width: 80,
     height: 80,

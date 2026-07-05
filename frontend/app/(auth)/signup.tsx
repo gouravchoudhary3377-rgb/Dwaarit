@@ -21,6 +21,9 @@ import { colors, radii, spacing, typography } from '@/src/theme';
 const HERO_IMAGE =
   'https://lh3.googleusercontent.com/d/1NipX0Vz47S0BF9Q7aiNBCnowq-vXaE3o';
 
+const LOGO_URI =
+  'https://lh3.googleusercontent.com/d/1eFN1jd-SBnKn0S2l4OLJpyyST0kVZ8X2';
+
 const { height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = SCREEN_H * 0.38;
 
@@ -69,6 +72,11 @@ export default function Signup() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* Logo */}
+        <View style={styles.logoRow}>
+          <Image source={{ uri: LOGO_URI }} style={styles.logoImg} contentFit="contain" />
+        </View>
+
         <Text style={styles.heading}>Create your account</Text>
         <Text style={styles.sub}>Join Flynkit and get groceries delivered in minutes.</Text>
 
@@ -108,6 +116,8 @@ const styles = StyleSheet.create({
 
   heading: { ...typography.h2, color: colors.textPrimary },
   sub: { ...typography.body, color: colors.textSecondary },
+  logoRow: { alignItems: 'center', paddingBottom: spacing.sm },
+  logoImg: { width: 100, height: 100, borderRadius: 16 },
 
   form: { gap: spacing.md },
   err: { color: colors.error, ...typography.caption },

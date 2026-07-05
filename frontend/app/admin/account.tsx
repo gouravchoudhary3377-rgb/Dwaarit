@@ -22,7 +22,7 @@ import { api, ApiError } from '@/src/api/client';
 import { PrimaryButton } from '@/src/components/ui/PrimaryButton';
 import { colors, radii, shadow, spacing, typography } from '@/src/theme';
 
-const LOGO = 'https://static.prod-images.emergentagent.com/jobs/bdde9f90-cad7-4873-bec0-5782f2227a6f/images/1892eaf7d4a9ba405904399fa6c44397c6fce95b70715824f34db564c27d7f72.png';
+const LOGO = 'https://lh3.googleusercontent.com/d/1eFN1jd-SBnKn0S2l4OLJpyyST0kVZ8X2';
 
 function ChevronIcon({ color = colors.textMuted }: { color?: string }) {
   return (
@@ -319,7 +319,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  logo: { width: 110, height: 55 },
+  logo: { width: 90, height: 90, borderRadius: 14 },
   rolePill: {
     backgroundColor: colors.primarySoft,
     paddingHorizontal: 12, paddingVertical: 5,
